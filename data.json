@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "title": "Inception",
+    "year": "2010",
+    "rating": 4.8,
+    "poster": "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=1000&auto=format&fit=crop",
+    "backdrop": "https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2000&auto=format&fit=crop",
+    "plot": "Un ladro che ruba segreti aziendali attraverso l'uso della tecnologia di condivisione dei sogni riceve l'incarico inverso di piantare un'idea nella mente di un C.E.O.",
+    "cast": ["Leonardo DiCaprio", "Joseph Gordon-Levitt", "Elliot Page"]
+  },
+  {
+    "id": 2,
+    "title": "Interstellar",
+    "year": "2014",
+    "rating": 4.9,
+    "poster": "https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=1000&auto=format&fit=crop",
+    "backdrop": "https://images.unsplash.com/photo-1475274047050-1d0c0975c63e?q=80&w=2000&auto=format&fit=crop",
+    "plot": "Un team di esploratori viaggia attraverso un wormhole nello spazio nel tentativo di garantire la sopravvivenza dell'umanità.",
+    "cast": ["Matthew McConaughey", "Anne Hathaway", "Jessica Chastain"]
+  },
+  {
+    "id": 3,
+    "title": "The Dark Knight",
+    "year": "2008",
+    "rating": 4.9,
+    "poster": "https://images.unsplash.com/photo-1509248961158-e54f6934749c?q=80&w=1000&auto=format&fit=crop",
+    "backdrop": "https://images.unsplash.com/photo-1531259683007-016a7b628fc3?q=80&w=2000&auto=format&fit=crop",
+    "plot": "Quando la minaccia nota come il Joker emerge dal suo passato misterioso, semina caos e distruzione a Gotham City.",
+    "cast": ["Christian Bale", "Heath Ledger", "Aaron Eckhart"]
+  },
+  {
+    "id": 4,
+    "title": "Pulp Fiction",
+    "year": "1994",
+    "rating": 4.7,
+    "poster": "https://images.unsplash.com/photo-1594909122845-11baa439b7bf?q=80&w=1000&auto=format&fit=crop",
+    "backdrop": "https://images.unsplash.com/photo-1492037766660-2a56f9eb3fcb?q=80&w=2000&auto=format&fit=crop",
+    "plot": "Le vite di due sicari della mafia, un pugile, un gangster e sua moglie si intrecciano in quattro storie di violenza e redenzione.",
+    "cast": ["John Travolta", "Uma Thurman", "Samuel L. Jackson"]
+  }
+]

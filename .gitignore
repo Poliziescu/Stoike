@@ -1,0 +1,35 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Node.js / NPM (in caso tu debba installare pacchetti come Tailwind in futuro)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Ambienti ed Editor
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# File temporanei
+*.log
+tmp/
+temp/
+
+# Variabili d'ambiente e segreti (sempre meglio ignorarli per sicurezza)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build e Cartelle di Output (nel caso in cui farai una build ottimizzata per la produzione)
+dist/
+build/
+out/

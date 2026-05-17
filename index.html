@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Stoike</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap"
+        rel="stylesheet" />
+    <link
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap"
+        rel="stylesheet" />
+    <script src="tailwind.config.js"></script>
+    <link href="style.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+
+<body class="bg-background text-on-background min-h-screen pb-20 md:pb-0">
+    <!-- TopNavBar -->
+    <nav
+        class="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-outline-variant/10 text-primary-container">
+        <div class="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-full mx-auto">
+            <div class="font-display-lg-mobile text-display-lg-mobile text-primary-container tracking-tight">
+                Stoike
+            </div>
+            <div class="hidden md:flex items-center gap-md">
+                <a class="text-primary-container font-bold border-b-2 border-primary-container pb-1 hover:bg-white/5 transition-all duration-300 opacity-80 scale-95 transition-transform font-headline-sm text-headline-sm"
+                    href="#">Movies</a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm"
+                    href="#">Genres</a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm"
+                    href="#">Awards</a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm"
+                    href="#">Community</a>
+            </div>
+            <div class="flex items-center gap-sm">
+                <div class="relative hidden md:block">
+                    <input
+                        class="bg-black border-b border-outline-variant focus:border-primary-container focus:ring-0 text-on-background px-3 py-1 w-48 transition-colors"
+                        placeholder="Search..." type="text" />
+                    <span
+                        class="material-symbols-outlined absolute right-2 top-1 text-on-surface-variant material-fill-0">search</span>
+                </div>
+                <button class="p-2 hover:bg-white/5 rounded-full transition-all">
+                    <span class="material-symbols-outlined text-primary-container"
+                        data-icon="notifications">notifications</span>
+                </button>
+                <button class="p-2 hover:bg-white/5 rounded-full transition-all">
+                    <span class="material-symbols-outlined text-primary-container" data-icon="bookmark">bookmark</span>
+                </button>
+                <div class="w-10 h-10 rounded-full overflow-hidden ml-2 border border-outline-variant/20">
+                    <img alt="User profile avatar" class="w-full h-full object-cover"
+                        data-alt="A close-up portrait of a cinematic user avatar. The lighting is moody and dramatic with deep shadows and a soft, golden rim light, creating a mysterious, high-end film noir vibe. The background is a dark, out-of-focus charcoal gray."
+                        src="https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3" />
+                </div>
+            </div>
+        </div>
+    </nav>
+    <!-- Main Content Layout -->
+    <div class="flex pt-20 h-screen">
+        <!-- SideNavBar -->
+        <aside id="sidebar"
+            class="hidden md:flex flex-col fixed left-0 top-20 bottom-0 py-md w-64 border-r border-outline-variant/10 bg-background text-primary-container font-body-md text-body-md">
+            <div class="px-md mb-lg">
+                <div class="font-headline-sm text-primary-container mb-1">Catalog</div>
+                <div class="text-on-surface-variant font-label-sm text-label-sm">Browse by Category</div>
+            </div>
+            <nav class="flex-1 flex flex-col gap-2 px-sm">
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary-container/10 text-primary-container border-r-4 border-primary-container hover:bg-surface-container-highest"
+                    href="#">
+                    <span class="material-symbols-outlined">trending_up</span>
+                    <span>Trending</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:bg-surface-container-high transition-colors click:bg-surface-container-highest"
+                    href="#">
+                    <span class="material-symbols-outlined">star</span>
+                    <span>Top Rated</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:bg-surface-container-high transition-colors click:bg-surface-container-highest"
+                    href="#">
+                    <span class="material-symbols-outlined">new_releases</span>
+                    <span>New Releases</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:bg-surface-container-high transition-colors click:bg-surface-container-highest"
+                    href="#">
+                    <span class="material-symbols-outlined">upcoming</span>
+                    <span>Coming Soon</span>
+                </a>
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:bg-surface-container-high transition-colors click:bg-surface-container-highest"
+                    href="#">
+                    <span class="material-symbols-outlined">library_books</span>
+                    <span>Collection</span>
+                </a>
+            </nav>
+            <div class="p-md mt-auto">
+                <button
+                    class="w-full py-3 bg-primary-container text-black font-label-md text-label-md rounded hover:bg-primary transition-colors">Premium
+                    Access</button>
+            </div>
+        </aside>
+        <!-- Main Content Canvas -->
+        <main id="main-content" class="flex-1 md:ml-64 p-margin-mobile md:p-margin-desktop overflow-y-auto">
+            <!-- Hero Section -->
+            <section id="hero-section"
+                class="relative w-full aspect-[21/9] rounded-xl overflow-hidden mb-lg glass-panel cursor-pointer hover:ring-2 hover:ring-primary-container transition-all">
+                <img id="hero-backdrop" alt="Hero Movie Backdrop"
+                    class="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay"
+                    src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3MXchIKCZxYsnX7MsyYJAKCOIUBNuTGjc2Snmp4hoKGgzyNSU1PRdV--_tuqRU7egy8qo0Omir8WHRToIUafvh6hCuijHTNLNzVYrgIIvKQabmG-Sjw-TI-AaD0pbITJcrEOJxtdVrKMfBjU5Q2EU9oSoVoVqhYFS5FAxzLPcP8u5M8fbntaXwPv7m25vtrec9FBvc2g68wax09o3TweVwhjTdcz8nO6Jtso6UMlAJ1hzBat5tWu_lPhIAG7D4HAO3n2EryDs-R5I" />
+                <div class="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent"></div>
+                <div class="absolute bottom-0 left-0 p-lg w-full md:w-2/3">
+                    <span
+                        class="inline-block px-3 py-1 rounded-full glass-panel border border-white/20 font-label-sm text-label-sm mb-4 text-primary-container">
+                        Ultimo Arrivo</span>
+                    <h1 id="hero-title"
+                        class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-white mb-2 drop-shadow-md">
+                        Caricamento...</h1>
+                    <p id="hero-synopsis" class="font-body-md text-body-md text-on-surface-variant mb-6 line-clamp-2">Attendere prego, stiamo recuperando l'ultimo capolavoro...</p>
+                    <div class="flex gap-4">
+                        <button id="hero-watch-btn"
+                            class="px-6 py-3 bg-primary-container text-black font-label-md text-label-md rounded flex items-center gap-2 hover:bg-primary transition-colors">
+                            <span class="material-symbols-outlined material-fill-1">play_arrow</span> Scopri di più
+                        </button>
+                        <button
+                            class="px-6 py-3 glass-panel border border-white/20 font-label-md text-label-md rounded flex items-center gap-2 hover:bg-white/10 transition-colors">
+                            <span class="material-symbols-outlined">add</span> Add to List
+                        </button>
+                    </div>
+                </div>
+            </section>
+            <!-- Trending Grid -->
+            <section>
+                <h2 id="section-title"
+                    class="font-headline-md text-headline-md mb-md border-l-4 border-primary-container pl-3">Trending
+                    Now</h2>
+                <div id="genres-view" class="hidden mb-6">
+                    <div id="genres-container" class="flex flex-wrap gap-4">
+                        <!-- I generi verranno generati qui dinamicamente -->
+                    </div>
+                </div>
+                <div id="movies-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-gutter">
+                    <!-- I film verranno caricati qui da Supabase -->
+                </div>
+                <!-- Movie Detail View -->
+                <div id="movie-detail" class="hidden">
+                    <button id="back-to-grid" class="flex items-center gap-2 text-on-surface-variant hover:text-primary-container transition-colors mb-8 font-label-md text-label-md group">
+                        <span class="material-symbols-outlined group-hover:-translate-x-1 transition-transform">arrow_back</span>
+                        Torna al catalogo
+                    </button>
+                    <!-- Top section: Poster + Info -->
+                    <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 mb-10">
+                        <!-- Poster -->
+                        <div class="flex-shrink-0 w-full max-w-[280px] mx-auto lg:mx-0 lg:max-w-[300px]">
+                            <img id="detail-poster" alt="" class="w-full rounded-xl shadow-2xl border border-white/10" />
+                        </div>
+                        <!-- Info -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex flex-wrap items-center gap-3 mb-3">
+                                <span id="detail-genre" class="px-4 py-1.5 rounded-full glass-panel border border-white/20 font-label-sm text-label-sm text-primary-container"></span>
+                                <span id="detail-year" class="text-on-surface-variant font-label-sm text-label-sm"></span>
+                            </div>
+                            <h1 id="detail-title" class="font-display-lg-mobile text-display-lg-mobile md:text-[2.5rem] md:leading-tight text-white mb-4 break-words"></h1>
+                            <div class="flex items-center gap-2 mb-8">
+                                <span class="material-symbols-outlined text-primary-container material-fill-1 text-[28px]">star</span>
+                                <span id="detail-rating" class="text-primary-container font-headline-sm text-headline-sm"></span>
+                                <span class="text-on-surface-variant font-label-md text-label-md">/ 5</span>
+                            </div>
+                            <!-- Synopsis -->
+                            <div id="detail-synopsis-container" class="hidden mb-6">
+                                <h2 class="font-headline-sm text-headline-sm text-white mb-3 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary-container">description</span>
+                                    Trama
+                                </h2>
+                                <p id="detail-synopsis" class="font-body-md text-body-md text-on-surface-variant leading-relaxed"></p>
+                            </div>
+                            
+                            <!-- New Elements: Cast, Prequel/Sequel, Similar Movies -->
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                                <!-- Cast -->
+                                <div id="detail-cast-container" class="hidden">
+                                    <h2 class="font-headline-sm text-headline-sm text-white mb-2 flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary-container text-[20px]">group</span>
+                                        Cast Principale
+                                    </h2>
+                                    <p id="detail-cast" class="font-body-md text-body-md text-on-surface-variant leading-relaxed"></p>
+                                </div>
+                                <!-- Related Movies (Prequel/Sequel) -->
+                                <div id="detail-related-container" class="hidden">
+                                    <h2 class="font-headline-sm text-headline-sm text-white mb-2 flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary-container text-[20px]">account_tree</span>
+                                        Prequel & Sequel
+                                    </h2>
+                                    <p id="detail-related" class="font-body-md text-body-md text-on-surface-variant leading-relaxed"></p>
+                                </div>
+                                <!-- Similar Movies -->
+                                <div id="detail-similar-container" class="hidden md:col-span-2">
+                                    <h2 class="font-headline-sm text-headline-sm text-white mb-2 flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-primary-container text-[20px]">movie</span>
+                                        Titoli Simili Suggeriti
+                                    </h2>
+                                    <p id="detail-similar" class="font-body-md text-body-md text-on-surface-variant leading-relaxed"></p>
+                                </div>
+                            </div>
+                            <!-- Review -->
+                            <div id="detail-review-container" class="hidden">
+                                <h2 class="font-headline-sm text-headline-sm text-white mb-3 flex items-center gap-2">
+                                    <span class="material-symbols-outlined material-fill-1 text-primary-container">rate_review</span>
+                                    La nostra recensione
+                                </h2>
+                                <div class="glass-panel border border-white/10 rounded-xl p-6">
+                                    <p id="detail-review" class="font-body-md text-body-md text-on-surface-variant italic leading-relaxed"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Trailer (full width below) -->
+                    <div id="detail-trailer-container" class="hidden">
+                        <h2 class="font-headline-sm text-headline-sm text-white mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined material-fill-1 text-primary-container">play_circle</span>
+                            Trailer
+                        </h2>
+                        <div class="aspect-video w-full max-w-4xl rounded-xl overflow-hidden glass-panel border border-white/10">
+                            <iframe id="detail-trailer" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+    <!-- BottomNavBar -->
+    <nav
+        class="md:hidden flex justify-around items-center h-16 pb-safe w-full fixed bottom-0 z-50 rounded-t-xl bg-surface-container-lowest/90 backdrop-blur-2xl border-t border-outline-variant/20 shadow-xl text-primary-container font-label-sm text-label-sm">
+        <a class="flex flex-col items-center justify-center text-primary-container drop-shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:opacity-100 scale-110 duration-200"
+            href="#">
+            <span class="material-symbols-outlined">home</span>
+            <span>Home</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200"
+            href="#">
+            <span class="material-symbols-outlined">search</span>
+            <span>Search</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200"
+            href="#">
+            <span class="material-symbols-outlined">movie_filter</span>
+            <span>Watchlist</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200"
+            href="#">
+            <span class="material-symbols-outlined">person</span>
+            <span>Profile</span>
+        </a>
+    </nav>
+    <!-- Support FAB Button -->
+    <button id="support-fab"
+        class="fixed bottom-24 md:bottom-8 right-6 z-50 w-14 h-14 rounded-full bg-primary-container text-on-primary-container shadow-lg hover:bg-primary-fixed-dim transition-all duration-300 flex items-center justify-center hover:scale-110 active:scale-95"
+        title="Segnala un problema">
+        <span class="material-symbols-outlined text-[28px]">support_agent</span>
+    </button>
+    <!-- Support Modal -->
+    <div id="support-modal" class="fixed inset-0 z-[100] hidden items-center justify-center">
+        <div id="support-backdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative w-[90%] max-w-lg mx-auto glass-panel border border-white/10 rounded-xl p-8 shadow-2xl">
+            <button id="support-close"
+                class="absolute top-4 right-4 text-on-surface-variant hover:text-white transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <h2 class="font-headline-sm text-headline-sm text-primary-container mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined material-fill-1">bug_report</span>
+                Segnala un problema
+            </h2>
+            <p class="text-on-surface-variant font-label-sm text-label-sm mb-6">Descrivici il problema riscontrato e lo
+                risolveremo al più presto.</p>
+            <form id="support-form" class="flex flex-col gap-4">
+                <input id="support-title" type="text" required placeholder="Titolo del problema (breve e chiaro)"
+                    class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md" />
+                <textarea id="support-message" required rows="5" placeholder="Descrivi il problema nel dettaglio..."
+                    class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md resize-none"></textarea>
+                <button type="submit" id="support-submit"
+                    class="px-6 py-3 bg-primary-container text-black font-label-md text-label-md rounded-lg hover:bg-primary-fixed-dim transition-colors flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[20px]">send</span>
+                    Invia segnalazione
+                </button>
+            </form>
+        </div>
+    </div>
+    <script>
+        // Inizializza Supabase
+        const _supabaseUrl = 'https://tsolrzumlrppryqgeqcm.supabase.co';
+        const _supabaseKey = 'sb_publishable_GTIJLE6qEB2ViGS0IRYxKw_Is5VpoBf';
+        const supabaseClient = supabase.createClient(_supabaseUrl, _supabaseKey);
+
+        async function loadMovies() {
+            const { data, error } = await supabaseClient
+                .from('movies')
+                .select('*')
+                .order('created_at', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching movies:', error);
+                return [];
+            }
+            return data || [];
+        }
+
+        function renderHeroMovie(movie) {
+            if (!movie) return;
+            const heroSection = document.getElementById('hero-section');
+            if (!heroSection) return;
+
+            document.getElementById('hero-backdrop').src = movie.poster_url || '';
+            document.getElementById('hero-title').innerText = movie.title || 'Senza Titolo';
+            
+            const synopsisEl = document.getElementById('hero-synopsis');
+            if (movie.synopsis) {
+                synopsisEl.innerText = movie.synopsis;
+            } else {
+                synopsisEl.innerText = 'Nessuna trama disponibile per questo capolavoro.';
+            }
+
+            const watchBtn = document.getElementById('hero-watch-btn');
+            // Remove old listeners by cloning
+            const newWatchBtn = watchBtn.cloneNode(true);
+            watchBtn.parentNode.replaceChild(newWatchBtn, watchBtn);
+            newWatchBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showMovieDetail(movie);
+            });
+            
+            // Allow clicking the hero section itself
+            const newHeroSection = heroSection.cloneNode(true);
+            heroSection.parentNode.replaceChild(newHeroSection, heroSection);
+            newHeroSection.addEventListener('click', () => showMovieDetail(movie));
+        }
+
+        function renderMovies(movies, gridElement) {
+            if (!gridElement) return;
+
+            gridElement.innerHTML = ''; // Svuota la griglia
+
+            if (movies.length === 0) {
+                gridElement.innerHTML = '<div class="col-span-full text-center text-on-surface-variant py-12">Nessun film presente</div>';
+                return;
+            }
+
+            movies.forEach(movie => {
+                const card = document.createElement('div');
+                card.className = 'movie-card group relative rounded-lg overflow-hidden glass-panel glass-panel-hover transition-all duration-300 cursor-pointer';
+                card.setAttribute('data-genre', movie.genre || '');
+
+                card.addEventListener('click', () => showMovieDetail(movie));
+
+                card.innerHTML = `
+<div class="aspect-[2/3] w-full relative">
+<img alt="${movie.title}" class="w-full h-full object-cover" src="${movie.poster_url || ''}"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80"></div>
+</div>
+<div class="absolute bottom-0 left-0 w-full p-4 glass-panel border-t border-white/10">
+<h3 class="font-headline-sm text-headline-sm-mobile md:font-headline-sm md:text-headline-sm text-white mb-1 truncate">${movie.title || 'Senza Titolo'}</h3>
+<div class="flex items-center gap-1 font-label-sm text-label-sm text-primary-container">
+<span class="material-symbols-outlined text-[16px] material-fill-1">star</span>
+<span>${movie.rating || 'N/A'}</span>
+<span class="text-on-surface-variant ml-2">${movie.release_year || ''}</span>
+</div>
+</div>
+            `;
+                gridElement.appendChild(card);
+            });
+        }
+
+        function getYouTubeEmbedUrl(url) {
+            if (!url) return null;
+            let videoId = null;
+            const shortMatch = url.match(/youtu\.be\/([\w-]+)/);
+            if (shortMatch) videoId = shortMatch[1];
+            const longMatch = url.match(/[?&]v=([\w-]+)/);
+            if (longMatch) videoId = longMatch[1];
+            return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
+        }
+
+        function showMovieDetail(movie) {
+            const heroSection = document.getElementById('hero-section');
+            const genresView = document.getElementById('genres-view');
+            const sectionTitle = document.getElementById('section-title');
+            const movieDetail = document.getElementById('movie-detail');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+
+            if (heroSection) heroSection.classList.add('hidden');
+            if (genresView) genresView.classList.add('hidden');
+            if (sectionTitle) sectionTitle.classList.add('hidden');
+            document.getElementById('movies-grid').classList.add('hidden');
+            
+            // Nascondi sidebar e rimuovi margin per vista a tutto schermo
+            if (sidebar) {
+                sidebar.classList.remove('md:flex');
+                sidebar.classList.add('hidden');
+            }
+            if (mainContent) {
+                mainContent.classList.remove('md:ml-64');
+            }
+
+            movieDetail.classList.remove('hidden');
+
+            document.getElementById('detail-poster').src = movie.poster_url || '';
+            document.getElementById('detail-poster').alt = movie.title;
+            document.getElementById('detail-title').innerText = movie.title || 'Senza Titolo';
+            document.getElementById('detail-genre').innerText = movie.genre || '';
+            document.getElementById('detail-year').innerText = movie.release_year || '';
+            document.getElementById('detail-rating').innerText = movie.rating || 'N/A';
+
+            const trailerContainer = document.getElementById('detail-trailer-container');
+            const trailerIframe = document.getElementById('detail-trailer');
+            const embedUrl = getYouTubeEmbedUrl(movie.trailer_url);
+            if (embedUrl) {
+                trailerIframe.src = embedUrl;
+                trailerContainer.classList.remove('hidden');
+            } else {
+                trailerIframe.src = '';
+                trailerContainer.classList.add('hidden');
+            }
+
+            const synopsisContainer = document.getElementById('detail-synopsis-container');
+            const synopsisEl = document.getElementById('detail-synopsis');
+            if (movie.synopsis) {
+                synopsisEl.innerText = movie.synopsis;
+                synopsisContainer.classList.remove('hidden');
+            } else {
+                synopsisContainer.classList.add('hidden');
+            }
+
+            // New fields: Cast, Related Movies, Similar Movies
+            const castContainer = document.getElementById('detail-cast-container');
+            const castEl = document.getElementById('detail-cast');
+            if (movie.main_cast) {
+                let castHTML = '';
+                try {
+                    let castArray = typeof movie.main_cast === 'string' ? JSON.parse(movie.main_cast) : movie.main_cast;
+                    if (Array.isArray(castArray)) {
+                        castHTML = '<div class="flex flex-wrap gap-3 mt-3">';
+                        castArray.forEach(actor => {
+                            castHTML += `
+                                <div class="flex items-center gap-3 bg-surface-container-high border border-outline-variant/20 pr-4 rounded-full overflow-hidden hover:bg-surface-container-highest transition-colors cursor-default">
+                                    <img src="${actor.photo_url}" alt="${actor.name}" class="w-12 h-12 object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=2d2d2d&color=fff'" />
+                                    <span class="font-label-md text-label-md text-white">${actor.name}</span>
+                                </div>
+                            `;
+                        });
+                        castHTML += '</div>';
+                        castEl.innerHTML = castHTML;
+                    } else {
+                        castEl.innerText = movie.main_cast;
+                    }
+                } catch(e) {
+                    castEl.innerText = movie.main_cast; // Fallback se non è JSON valido
+                }
+                castContainer.classList.remove('hidden');
+            } else {
+                castContainer.classList.add('hidden');
+            }
+
+            const relatedContainer = document.getElementById('detail-related-container');
+            const relatedEl = document.getElementById('detail-related');
+            if (movie.related_movies) {
+                relatedEl.innerText = movie.related_movies;
+                relatedContainer.classList.remove('hidden');
+            } else {
+                relatedContainer.classList.add('hidden');
+            }
+
+            const similarContainer = document.getElementById('detail-similar-container');
+            const similarEl = document.getElementById('detail-similar');
+            if (movie.similar_movies) {
+                similarEl.innerText = movie.similar_movies;
+                similarContainer.classList.remove('hidden');
+            } else {
+                similarContainer.classList.add('hidden');
+            }
+
+            const reviewContainer = document.getElementById('detail-review-container');
+            const reviewEl = document.getElementById('detail-review');
+            if (movie.review) {
+                reviewEl.innerText = movie.review;
+                reviewContainer.classList.remove('hidden');
+            } else {
+                reviewContainer.classList.add('hidden');
+            }
+
+            // Forza lo scroll verso l'alto assicurandosi che avvenga DOPO il rendering della pagina
+            setTimeout(() => {
+                document.getElementById('main-content').scrollTo({ top: 0, behavior: 'instant' });
+                window.scrollTo({ top: 0, behavior: 'instant' });
+            }, 10);
+        }
+
+        function hideMovieDetail() {
+            const heroSection = document.getElementById('hero-section');
+            const sectionTitle = document.getElementById('section-title');
+            const movieDetail = document.getElementById('movie-detail');
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('main-content');
+
+            movieDetail.classList.add('hidden');
+            
+            // Ripristina sidebar e margin
+            if (sidebar) {
+                sidebar.classList.remove('hidden');
+                sidebar.classList.add('hidden', 'md:flex'); // Restore original classes
+            }
+            if (mainContent) {
+                mainContent.classList.add('md:ml-64');
+            }
+
+            document.getElementById('movies-grid').classList.remove('hidden');
+            if (heroSection) heroSection.classList.remove('hidden');
+            if (sectionTitle) sectionTitle.classList.remove('hidden');
+
+            document.getElementById('detail-trailer').src = '';
+        }
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            const sectionTitle = document.getElementById('section-title');
+            const moviesGrid = document.getElementById('movies-grid');
+            const heroSection = document.getElementById('hero-section');
+            const genresView = document.getElementById('genres-view');
+            const links = document.querySelectorAll('a[href="#"]');
+
+            // Fetch initial movies
+            if (moviesGrid) {
+                moviesGrid.innerHTML = '<div class="col-span-full text-center text-on-surface-variant py-12">Caricamento film da Supabase...</div>';
+                const initialMovies = await loadMovies();
+                if (initialMovies.length > 0) {
+                    renderHeroMovie(initialMovies[0]);
+                }
+                renderMovies(initialMovies, moviesGrid);
+                
+                // Popola i generi dinamicamente unendo un elenco standard a quelli del database
+                const genresContainer = document.getElementById('genres-container');
+                if (genresContainer) {
+                    const baseGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Horror', 'Mystery', 'Noir', 'Romance', 'Sci-Fi', 'Thriller', 'Western'];
+                    const dbGenres = initialMovies.map(m => m.genre).filter(Boolean);
+                    const uniqueGenres = [...new Set([...baseGenres, ...dbGenres])].sort();
+                    
+                    let genresHTML = `<button class="genre-btn px-6 py-3 bg-surface-container border border-outline-variant/20 font-label-md text-label-md rounded-full hover:bg-surface-container-high hover:border-primary-container/50 transition-colors" data-genre="All">All</button>`;
+                    genresHTML += uniqueGenres.map(genre => `
+                        <button class="genre-btn px-6 py-3 bg-surface-container border border-outline-variant/20 font-label-md text-label-md rounded-full hover:bg-surface-container-high hover:border-primary-container/50 transition-colors" data-genre="${genre}">${genre}</button>
+                    `).join('');
+                    
+                    genresContainer.innerHTML = genresHTML;
+                    
+                    // Aggiungi event listener ai nuovi bottoni
+                    document.querySelectorAll('.genre-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            const genre = btn.getAttribute('data-genre');
+                            if (moviesGrid) {
+                                moviesGrid.classList.remove('hidden');
+                                const cards = Array.from(moviesGrid.querySelectorAll('.movie-card'));
+                                cards.forEach(card => {
+                                    if (genre === 'All' || card.getAttribute('data-genre') === genre) {
+                                        card.classList.remove('hidden');
+                                    } else {
+                                        card.classList.add('hidden');
+                                    }
+                                });
+                            }
+                            if (sectionTitle) sectionTitle.innerText = genre === 'All' ? 'Tutti i generi' : 'Genre: ' + genre;
+                        });
+                    });
+                }
+            }
+
+            // Back button
+            const backBtn = document.getElementById('back-to-grid');
+            if (backBtn) backBtn.addEventListener('click', hideMovieDetail);
+
+            // Top nav specific classes
+            const topNavActive = 'text-primary-container font-bold border-b-2 border-primary-container pb-1 opacity-80 scale-95'.split(' ');
+            const topNavInactive = 'text-on-surface-variant'.split(' ');
+
+            // Side nav specific classes
+            const sideNavActive = 'bg-primary-container/10 text-primary-container border-r-4 border-primary-container'.split(' ');
+            const sideNavInactive = 'text-on-surface-variant'.split(' ');
+
+            // Bottom nav specific classes
+            const bottomNavActive = 'text-primary-container drop-shadow-[0_0_8px_rgba(255,215,0,0.4)]'.split(' ');
+            const bottomNavInactive = 'text-on-surface-variant opacity-60'.split(' ');
+
+            links.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+
+                    // Assicuriamoci di chiudere il dettaglio del film quando si naviga!
+                    const movieDetail = document.getElementById('movie-detail');
+                    if (movieDetail && !movieDetail.classList.contains('hidden')) {
+                        hideMovieDetail();
+                    }
+
+                    // Get clicked text
+                    let text = link.innerText.trim();
+                    const spanText = link.querySelector('span:not(.material-symbols-outlined)');
+                    if (spanText) {
+                        text = spanText.innerText.trim();
+                    }
+                    if (text === 'Home' || text === 'Movies' || text === 'Trending') {
+                        text = 'Trending Now';
+                    }
+
+                    if (text === 'Trending Now') {
+                        const currentHero = document.getElementById('hero-section');
+                        const currentGenresView = document.getElementById('genres-view');
+                        const currentMoviesGrid = document.getElementById('movies-grid');
+                        
+                        if (currentGenresView) currentGenresView.classList.add('hidden');
+                        if (currentHero) currentHero.classList.remove('hidden');
+                        if (sectionTitle) sectionTitle.innerText = text;
+                        if (currentMoviesGrid) {
+                            currentMoviesGrid.classList.remove('hidden');
+                            const cards = Array.from(currentMoviesGrid.querySelectorAll('.movie-card'));
+                            cards.forEach(card => card.classList.remove('hidden'));
+                        }
+                    } else if (text === 'Genres') {
+                        const currentHero = document.getElementById('hero-section');
+                        const currentGenresView = document.getElementById('genres-view');
+                        const currentMoviesGrid = document.getElementById('movies-grid');
+                        
+                        if (currentHero) currentHero.classList.add('hidden');
+                        if (currentGenresView) currentGenresView.classList.remove('hidden');
+                        if (currentMoviesGrid) {
+                            currentMoviesGrid.classList.remove('hidden');
+                            const cards = Array.from(currentMoviesGrid.querySelectorAll('.movie-card'));
+                            cards.forEach(card => card.classList.remove('hidden'));
+                        }
+                        if (sectionTitle) sectionTitle.innerText = 'Genres';
+                    } else {
+                        const currentHero = document.getElementById('hero-section');
+                        const currentGenresView = document.getElementById('genres-view');
+                        const currentMoviesGrid = document.getElementById('movies-grid');
+                        
+                        if (currentGenresView) currentGenresView.classList.add('hidden');
+                        if (currentHero) currentHero.classList.add('hidden');
+                        if (sectionTitle) sectionTitle.innerText = text;
+                        if (currentMoviesGrid) {
+                            currentMoviesGrid.classList.remove('hidden');
+                            const cards = Array.from(currentMoviesGrid.querySelectorAll('.movie-card'));
+                            cards.forEach(card => {
+                                card.classList.remove('hidden');
+                            });
+                            // Shuffle cards to simulate loading new content
+                            cards.sort(() => Math.random() - 0.5);
+                            cards.forEach(card => currentMoviesGrid.appendChild(card));
+                        }
+                    }
+
+                    // Highlight logic
+                    const navContainer = link.parentElement;
+                    const isTopNav = navContainer.classList.contains('hidden') && navContainer.classList.contains('md:flex');
+                    const isSideNav = navContainer.tagName === 'NAV' && navContainer.classList.contains('flex-col');
+                    const isBottomNav = navContainer.tagName === 'NAV' && navContainer.classList.contains('bottom-0');
+
+                    if (isTopNav) {
+                        navContainer.querySelectorAll('a').forEach(a => {
+                            a.classList.remove(...topNavActive);
+                            a.classList.add(...topNavInactive);
+                        });
+                        link.classList.remove(...topNavInactive);
+                        link.classList.add(...topNavActive);
+                    }
+                    else if (isSideNav) {
+                        navContainer.querySelectorAll('a').forEach(a => {
+                            a.classList.remove(...sideNavActive);
+                            a.classList.add(...sideNavInactive);
+                        });
+                        link.classList.remove(...sideNavInactive);
+                        link.classList.add(...sideNavActive);
+                    }
+                    else if (isBottomNav) {
+                        navContainer.querySelectorAll('a').forEach(a => {
+                            a.classList.remove(...bottomNavActive);
+                            a.classList.add(...bottomNavInactive);
+                        });
+                        link.classList.remove(...bottomNavInactive);
+                        link.classList.add(...bottomNavActive);
+                    }
+                });
+            });
+
+            // === SUPPORT MODAL LOGIC ===
+            const supportFab = document.getElementById('support-fab');
+            const supportModal = document.getElementById('support-modal');
+            const supportClose = document.getElementById('support-close');
+            const supportBackdrop = document.getElementById('support-backdrop');
+            const supportForm = document.getElementById('support-form');
+            const SUPPORT_EMAIL = 'support@stoike.cinema';
+
+            function openSupportModal() {
+                supportModal.classList.remove('hidden');
+                supportModal.classList.add('flex');
+            }
+            function closeSupportModal() {
+                supportModal.classList.add('hidden');
+                supportModal.classList.remove('flex');
+            }
+
+            if (supportFab) supportFab.addEventListener('click', openSupportModal);
+            if (supportClose) supportClose.addEventListener('click', closeSupportModal);
+            if (supportBackdrop) supportBackdrop.addEventListener('click', closeSupportModal);
+
+            if (supportForm) {
+                supportForm.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    const title = document.getElementById('support-title').value.trim();
+                    const message = document.getElementById('support-message').value.trim();
+
+                    const subject = encodeURIComponent('[Stoike Support] ' + title);
+                    const body = encodeURIComponent(message);
+                    window.location.href = `mailto:${SUPPORT_EMAIL}?subject=${subject}&body=${body}`;
+
+                    supportForm.reset();
+                    closeSupportModal();
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>
