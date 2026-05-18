@@ -7,4 +7,4 @@
 - [ ] Implementare funzione per click su related movies
 - [x] Implementare funzione per click su similar movies
 - [ ] Implementare 
-
+- test push
