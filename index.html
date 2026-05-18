@@ -294,17 +294,48 @@
         const _supabaseKey = 'sb_publishable_GTIJLE6qEB2ViGS0IRYxKw_Is5VpoBf';
         const supabaseClient = supabase.createClient(_supabaseUrl, _supabaseKey);
 
-        async function loadMovies() {
-            const { data, error } = await supabaseClient
-                .from('movies')
-                .select('*')
-                .order('created_at', { ascending: false });
+        // TMDB Config
+        const TMDB_API_KEY = 'dfa8970a227f7426c921fc546ffee161';
+        const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+        const TMDB_IMAGE_BASE = 'https://image.tmdb.org/t/p/';
 
-            if (error) {
-                console.error('Error fetching movies:', error);
-                return [];
+        async function fetchTMDB(endpoint) {
+            try {
+                const res = await fetch(`${TMDB_BASE_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}api_key=${TMDB_API_KEY}&language=it-IT`);
+                const data = await res.json();
+                return data;
+            } catch (error) {
+                console.error('Error fetching from TMDb:', error);
+                return null;
             }
-            return data || [];
+        }
+
+        let tmdbGenres = {};
+        async function loadTMDBGenres() {
+            const data = await fetchTMDB('/genre/movie/list');
+            if (data && data.genres) {
+                data.genres.forEach(g => {
+                    tmdbGenres[g.id] = g.name;
+                });
+            }
+        }
+
+        async function loadMovies(endpoint = '/trending/movie/week') {
+            const data = await fetchTMDB(endpoint);
+            if (data && data.results) {
+                // Mappa i risultati TMDb per uniformarli
+                return data.results.map(m => ({
+                    id: m.id,
+                    title: m.title,
+                    genre: m.genre_ids ? m.genre_ids.map(id => tmdbGenres[id]).join(', ') : '',
+                    poster_url: m.poster_path ? `${TMDB_IMAGE_BASE}w500${m.poster_path}` : '',
+                    backdrop_url: m.backdrop_path ? `${TMDB_IMAGE_BASE}original${m.backdrop_path}` : '',
+                    rating: m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
+                    release_year: m.release_date ? m.release_date.substring(0, 4) : '',
+                    synopsis: m.overview || ''
+                }));
+            }
+            return [];
         }
 
         function renderHeroMovie(movie) {
@@ -312,7 +343,7 @@
             const heroSection = document.getElementById('hero-section');
             if (!heroSection) return;
 
-            document.getElementById('hero-backdrop').src = movie.poster_url || '';
+            document.getElementById('hero-backdrop').src = movie.backdrop_url || movie.poster_url || '';
             document.getElementById('hero-title').innerText = movie.title || 'Senza Titolo';
             
             const synopsisEl = document.getElementById('hero-synopsis');
@@ -382,7 +413,7 @@
             return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
         }
 
-        function showMovieDetail(movie) {
+        async function showMovieDetail(movie) {
             const heroSection = document.getElementById('hero-section');
             const genresView = document.getElementById('genres-view');
             const sectionTitle = document.getElementById('section-title');
@@ -413,11 +444,24 @@
             document.getElementById('detail-year').innerText = movie.release_year || '';
             document.getElementById('detail-rating').innerText = movie.rating || 'N/A';
 
+            // Fetch Additional Info da TMDb (Credits, Videos, Similar)
+            const [credits, videos, similar] = await Promise.all([
+                fetchTMDB(`/movie/${movie.id}/credits`),
+                fetchTMDB(`/movie/${movie.id}/videos`),
+                fetchTMDB(`/movie/${movie.id}/similar`)
+            ]);
+
             const trailerContainer = document.getElementById('detail-trailer-container');
             const trailerIframe = document.getElementById('detail-trailer');
-            const embedUrl = getYouTubeEmbedUrl(movie.trailer_url);
-            if (embedUrl) {
-                trailerIframe.src = embedUrl;
+            
+            let trailerKey = null;
+            if (videos && videos.results) {
+                const trailer = videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
+                if (trailer) trailerKey = trailer.key;
+            }
+
+            if (trailerKey) {
+                trailerIframe.src = `https://www.youtube.com/embed/${trailerKey}`;
                 trailerContainer.classList.remove('hidden');
             } else {
                 trailerIframe.src = '';
@@ -436,46 +480,44 @@
             // New fields: Cast, Related Movies, Similar Movies
             const castContainer = document.getElementById('detail-cast-container');
             const castEl = document.getElementById('detail-cast');
-            if (movie.main_cast) {
-                let castHTML = '';
-                try {
-                    let castArray = typeof movie.main_cast === 'string' ? JSON.parse(movie.main_cast) : movie.main_cast;
-                    if (Array.isArray(castArray)) {
-                        castHTML = '<div class="flex flex-wrap gap-3 mt-3">';
-                        castArray.forEach(actor => {
-                            castHTML += `
-                                <div class="flex items-center gap-3 bg-surface-container-high border border-outline-variant/20 pr-4 rounded-full overflow-hidden hover:bg-surface-container-highest transition-colors cursor-default">
-                                    <img src="${actor.photo_url}" alt="${actor.name}" class="w-12 h-12 object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=2d2d2d&color=fff'" />
-                                    <span class="font-label-md text-label-md text-white">${actor.name}</span>
-                                </div>
-                            `;
-                        });
-                        castHTML += '</div>';
-                        castEl.innerHTML = castHTML;
-                    } else {
-                        castEl.innerText = movie.main_cast;
-                    }
-                } catch(e) {
-                    castEl.innerText = movie.main_cast; // Fallback se non è JSON valido
-                }
+            
+            if (credits && credits.cast && credits.cast.length > 0) {
+                let castHTML = '<div class="flex flex-wrap gap-3 mt-3">';
+                // Mostra i primi 6 attori
+                credits.cast.slice(0, 6).forEach(actor => {
+                    const photoUrl = actor.profile_path ? `${TMDB_IMAGE_BASE}w185${actor.profile_path}` : `https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=2d2d2d&color=fff`;
+                    castHTML += `
+                        <div class="flex items-center gap-3 bg-surface-container-high border border-outline-variant/20 pr-4 rounded-full overflow-hidden hover:bg-surface-container-highest transition-colors cursor-default">
+                            <img src="${photoUrl}" alt="${actor.name}" class="w-12 h-12 object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=2d2d2d&color=fff'" />
+                            <span class="font-label-md text-label-md text-white">${actor.name}</span>
+                        </div>
+                    `;
+                });
+                castHTML += '</div>';
+                castEl.innerHTML = castHTML;
                 castContainer.classList.remove('hidden');
             } else {
                 castContainer.classList.add('hidden');
             }
 
             const relatedContainer = document.getElementById('detail-related-container');
-            const relatedEl = document.getElementById('detail-related');
-            if (movie.related_movies) {
-                relatedEl.innerText = movie.related_movies;
-                relatedContainer.classList.remove('hidden');
-            } else {
-                relatedContainer.classList.add('hidden');
-            }
+            // Nascondiamo i related movies per ora (TMDb usa 'collections' per i sequel, richiederebbe un'altra API call)
+            relatedContainer.classList.add('hidden');
 
             const similarContainer = document.getElementById('detail-similar-container');
             const similarEl = document.getElementById('detail-similar');
-            if (movie.similar_movies) {
-                similarEl.innerText = movie.similar_movies;
+            
+            if (similar && similar.results && similar.results.length > 0) {
+                let similarHTML = '<div class="flex flex-wrap gap-2 mt-2">';
+                similar.results.slice(0, 5).forEach(simMovie => {
+                    similarHTML += `
+                        <div class="px-4 py-2 bg-surface-container border border-outline-variant/10 rounded-full font-label-sm text-label-sm text-on-surface-variant truncate max-w-[200px]">
+                            ${simMovie.title}
+                        </div>
+                    `;
+                });
+                similarHTML += '</div>';
+                similarEl.innerHTML = similarHTML;
                 similarContainer.classList.remove('hidden');
             } else {
                 similarContainer.classList.add('hidden');
@@ -483,11 +525,37 @@
 
             const reviewContainer = document.getElementById('detail-review-container');
             const reviewEl = document.getElementById('detail-review');
-            if (movie.review) {
-                reviewEl.innerText = movie.review;
-                reviewContainer.classList.remove('hidden');
+            
+            reviewEl.innerHTML = '<span class="opacity-50">Caricamento recensioni...</span>';
+            reviewContainer.classList.remove('hidden');
+
+            // Cerca recensioni su Supabase
+            const { data: reviews, error } = await supabaseClient
+                .from('reviews')
+                .select('*')
+                .eq('tmdb_movie_id', movie.id)
+                .order('created_at', { ascending: false });
+
+            if (!error && reviews && reviews.length > 0) {
+                let reviewsHTML = '';
+                reviews.forEach(rev => {
+                    reviewsHTML += `
+                        <div class="mb-4 p-4 glass-panel border border-white/10 rounded-lg">
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="material-symbols-outlined text-primary-container text-[18px]">person</span>
+                                <span class="font-label-md text-white font-bold">${rev.author || 'Utente'}</span>
+                                <span class="ml-auto text-primary-container font-label-sm flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-[14px] material-fill-1">star</span>
+                                    ${rev.rating}/5
+                                </span>
+                            </div>
+                            <p class="font-body-md text-on-surface-variant">${rev.review_text}</p>
+                        </div>
+                    `;
+                });
+                reviewEl.innerHTML = reviewsHTML;
             } else {
-                reviewContainer.classList.add('hidden');
+                reviewEl.innerHTML = '<p class="font-body-md text-on-surface-variant italic">Nessuna recensione presente per questo film su Stoike.</p>';
             }
 
             // Forza lo scroll verso l'alto assicurandosi che avvenga DOPO il rendering della pagina
@@ -531,19 +599,20 @@
 
             // Fetch initial movies
             if (moviesGrid) {
-                moviesGrid.innerHTML = '<div class="col-span-full text-center text-on-surface-variant py-12">Caricamento film da Supabase...</div>';
-                const initialMovies = await loadMovies();
+                moviesGrid.innerHTML = '<div class="col-span-full text-center text-on-surface-variant py-12">Caricamento in corso...</div>';
+                
+                await loadTMDBGenres();
+                const initialMovies = await loadMovies('/trending/movie/week');
+                
                 if (initialMovies.length > 0) {
                     renderHeroMovie(initialMovies[0]);
                 }
                 renderMovies(initialMovies, moviesGrid);
                 
-                // Popola i generi dinamicamente unendo un elenco standard a quelli del database
+                // Popola i generi dinamicamente usando i generi di TMDb
                 const genresContainer = document.getElementById('genres-container');
-                if (genresContainer) {
-                    const baseGenres = ['Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Fantasy', 'Horror', 'Mystery', 'Noir', 'Romance', 'Sci-Fi', 'Thriller', 'Western'];
-                    const dbGenres = initialMovies.map(m => m.genre).filter(Boolean);
-                    const uniqueGenres = [...new Set([...baseGenres, ...dbGenres])].sort();
+                if (genresContainer && Object.keys(tmdbGenres).length > 0) {
+                    const uniqueGenres = Object.values(tmdbGenres).sort();
                     
                     let genresHTML = `<button class="genre-btn px-6 py-3 bg-surface-container border border-outline-variant/20 font-label-md text-label-md rounded-full hover:bg-surface-container-high hover:border-primary-container/50 transition-colors" data-genre="All">All</button>`;
                     genresHTML += uniqueGenres.map(genre => `
@@ -590,7 +659,7 @@
             const bottomNavInactive = 'text-on-surface-variant opacity-60'.split(' ');
 
             links.forEach(link => {
-                link.addEventListener('click', (e) => {
+                link.addEventListener('click', async (e) => {
                     e.preventDefault();
 
                     // Assicuriamoci di chiudere il dettaglio del film quando si naviga!
@@ -618,9 +687,11 @@
                         if (currentHero) currentHero.classList.remove('hidden');
                         if (sectionTitle) sectionTitle.innerText = text;
                         if (currentMoviesGrid) {
+                            currentMoviesGrid.innerHTML = '<div class="col-span-full text-center py-12"><span class="opacity-50">Caricamento...</span></div>';
                             currentMoviesGrid.classList.remove('hidden');
-                            const cards = Array.from(currentMoviesGrid.querySelectorAll('.movie-card'));
-                            cards.forEach(card => card.classList.remove('hidden'));
+                            const newMovies = await loadMovies('/trending/movie/week');
+                            if (newMovies.length > 0) renderHeroMovie(newMovies[0]);
+                            renderMovies(newMovies, currentMoviesGrid);
                         }
                     } else if (text === 'Genres') {
                         const currentHero = document.getElementById('hero-section');
@@ -631,6 +702,7 @@
                         if (currentGenresView) currentGenresView.classList.remove('hidden');
                         if (currentMoviesGrid) {
                             currentMoviesGrid.classList.remove('hidden');
+                            // Resetta i filtri quando entri in Genres
                             const cards = Array.from(currentMoviesGrid.querySelectorAll('.movie-card'));
                             cards.forEach(card => card.classList.remove('hidden'));
                         }
@@ -644,14 +716,15 @@
                         if (currentHero) currentHero.classList.add('hidden');
                         if (sectionTitle) sectionTitle.innerText = text;
                         if (currentMoviesGrid) {
+                            currentMoviesGrid.innerHTML = '<div class="col-span-full text-center py-12"><span class="opacity-50">Caricamento...</span></div>';
                             currentMoviesGrid.classList.remove('hidden');
-                            const cards = Array.from(currentMoviesGrid.querySelectorAll('.movie-card'));
-                            cards.forEach(card => {
-                                card.classList.remove('hidden');
-                            });
-                            // Shuffle cards to simulate loading new content
-                            cards.sort(() => Math.random() - 0.5);
-                            cards.forEach(card => currentMoviesGrid.appendChild(card));
+                            
+                            let endpoint = '/trending/movie/week';
+                            if (text === 'Top Rated') endpoint = '/movie/top_rated';
+                            if (text === 'New Releases') endpoint = '/movie/upcoming';
+                            
+                            const newMovies = await loadMovies(endpoint);
+                            renderMovies(newMovies, currentMoviesGrid);
                         }
                     }
 
