@@ -8,7 +8,8 @@ async function fetchTMDB(endpoint) {
     const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 seconds timeout
     try {
         const separator = endpoint.includes('?') ? '&' : '?';
-        const res = await fetch(`/api/tmdb${endpoint}${separator}_t=${Date.now()}`, {
+        const lang = (window.i18n && window.i18n.getTMDBLang) ? window.i18n.getTMDBLang() : 'it-IT';
+        const res = await fetch(`/api/tmdb${endpoint}${separator}language=${lang}&_t=${Date.now()}`, {
             signal: controller.signal
         });
         clearTimeout(timeoutId);
@@ -172,7 +173,7 @@ async function fetchSuggestionsGlobal(query) {
         });
         suggestionsBox.classList.remove('hidden');
     } else {
-        suggestionsBox.innerHTML = '<div class="p-4 text-center font-label-md text-on-surface-variant">Nessun risultato</div>';
+        suggestionsBox.innerHTML = `<div class="p-4 text-center font-label-md text-on-surface-variant">${window.i18n ? i18n.t('search.noResults') : 'Nessun risultato'}</div>`;
         suggestionsBox.classList.remove('hidden');
     }
 }
@@ -207,6 +208,50 @@ function renderMovieCard(movie) {
 
 // Global Setup logic
 document.addEventListener('DOMContentLoaded', async () => {
+    // Apply i18n translations
+    if (window.i18n) {
+        i18n.applyTranslations();
+        // Init custom language selector
+        const currentLang = i18n.getCurrentLang();
+        const flagMap = { it: 'it', en: 'gb', fr: 'fr', es: 'es', de: 'de' };
+        
+        const currentFlagImg = document.getElementById('current-lang-flag');
+        if (currentFlagImg && flagMap[currentLang]) {
+            currentFlagImg.src = `https://flagcdn.com/w20/${flagMap[currentLang]}.png`;
+            currentFlagImg.alt = currentLang.toUpperCase();
+        }
+
+        const btn = document.getElementById('lang-dropdown-btn');
+        const menu = document.getElementById('lang-dropdown-menu');
+        
+        if (btn && menu) {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                menu.classList.toggle('hidden');
+                menu.classList.toggle('flex');
+            });
+            
+            document.addEventListener('click', (e) => {
+                if (!btn.contains(e.target) && !menu.contains(e.target)) {
+                    menu.classList.add('hidden');
+                    menu.classList.remove('flex');
+                }
+            });
+        }
+        
+        // Expose globally for the onclick handlers in HTML
+        window.changeLanguage = async (lang) => {
+            if(menu) { 
+                menu.classList.add('hidden'); 
+                menu.classList.remove('flex'); 
+            }
+            i18n.setLang(lang);
+            tmdbGenres = {};
+            await loadTMDBGenres();
+            window.location.reload();
+        };
+    }
+
     // Check initial auth state
     checkAuthState();
     await loadTMDBGenres();
@@ -452,6 +497,8 @@ function highlightActiveNav() {
         if (href.includes('index.html') && (path.endsWith('/') || path.endsWith('index.html'))) {
             isActive = true;
         } else if (href.includes('genres.html') && path.includes('genres.html')) {
+            isActive = true;
+        } else if (href.includes('actors.html') && path.includes('actors.html')) {
             isActive = true;
         } else if (href.includes('list.html')) {
             // Check specific types: top_rated, upcoming, etc.

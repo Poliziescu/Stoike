@@ -23,7 +23,26 @@ document.addEventListener('DOMContentLoaded', async () => {
     currentMovieId = movieId;
     await loadMovieDetails(movieId);
 
+    // Sub-header scroll visibility: show back arrow + mini title only when main title is out of view
+    const mainContent = document.getElementById('main-content');
+    const subHeader = document.getElementById('sub-header');
+    const detailTitle = document.getElementById('detail-title');
 
+    if (mainContent && subHeader && detailTitle) {
+        mainContent.addEventListener('scroll', () => {
+            const titleRect = detailTitle.getBoundingClientRect();
+            // 80px = height of the top navbar
+            const titleHidden = titleRect.bottom < 80;
+
+            if (titleHidden) {
+                subHeader.classList.remove('opacity-0', '-translate-y-4', 'pointer-events-none');
+                subHeader.classList.add('opacity-100', 'translate-y-0', 'pointer-events-auto');
+            } else {
+                subHeader.classList.add('opacity-0', '-translate-y-4', 'pointer-events-none');
+                subHeader.classList.remove('opacity-100', 'translate-y-0', 'pointer-events-auto');
+            }
+        });
+    }
 
     // Setup custom delete modal event handlers
     const deleteClose = document.getElementById('delete-close');
@@ -91,7 +110,21 @@ async function loadMovieDetails(movieId) {
         const castContainer = document.getElementById('detail-cast-container');
         const castEl = document.getElementById('detail-cast');
         if (credits && credits.cast && credits.cast.length > 0) {
-            castEl.innerText = credits.cast.slice(0, 8).map(c => c.name).join(', ');
+            castEl.innerHTML = '';
+            const sliceLimit = Math.min(credits.cast.length, 8);
+            credits.cast.slice(0, sliceLimit).forEach((c, idx) => {
+                const span = document.createElement('span');
+                span.className = 'text-primary-container hover:underline cursor-pointer transition-all duration-200 font-medium';
+                span.innerText = c.name;
+                span.addEventListener('click', () => {
+                    window.location.href = `/actors.html?query=${encodeURIComponent(c.name)}`;
+                });
+                castEl.appendChild(span);
+                
+                if (idx < sliceLimit - 1) {
+                    castEl.appendChild(document.createTextNode(', '));
+                }
+            });
             castContainer.classList.remove('hidden');
         } else {
             castContainer.classList.add('hidden');
@@ -178,7 +211,7 @@ async function loadMovieDetails(movieId) {
 
     } catch (e) {
         console.error('Error loading movie details:', e);
-        document.getElementById('detail-title').innerText = 'Errore di caricamento';
+        document.getElementById('detail-title').innerText = i18n.t('movie.errorLoading');
         alert('Impossibile caricare i dettagli di questo film.');
     }
 }
@@ -188,7 +221,7 @@ async function loadReviews(movieId) {
     const reviewEl = document.getElementById('detail-review');
     const addReviewSection = document.getElementById('add-review-section');
 
-    reviewEl.innerHTML = '<span class="opacity-50">Caricamento recensioni...</span>';
+    reviewEl.innerHTML = `<span class="opacity-50">${i18n.t('reviews.loading')}</span>`;
     reviewContainer.classList.remove('hidden');
 
     const currentUser = localStorage.getItem('stoike_user');
@@ -210,11 +243,11 @@ async function loadReviews(movieId) {
         if (Array.isArray(reviews) && reviews.length > 0) {
             reviewEl.innerHTML = reviews.map(rev => renderReviewCard(rev, isAdmin)).join('');
         } else {
-            reviewEl.innerHTML = '<p class="font-body-md text-on-surface-variant italic">Nessuna recensione presente per questo film su Stoike.</p>';
+            reviewEl.innerHTML = `<p class="font-body-md text-on-surface-variant italic">${i18n.t('reviews.none')}</p>`;
         }
     } catch (err) {
         console.error('Error fetching reviews:', err);
-        reviewEl.innerHTML = '<p class="font-body-md text-on-surface-variant italic">Errore nel caricamento delle recensioni.</p>';
+        reviewEl.innerHTML = `<p class="font-body-md text-on-surface-variant italic">${i18n.t('reviews.errorLoading')}</p>`;
     }
 }
 
@@ -234,7 +267,7 @@ function renderReviewCard(rev, isAdmin) {
             ` : ''}
             <div class="flex items-center gap-2 mb-2 pr-24">
                 <span class="material-symbols-outlined text-primary-container text-[18px]">person</span>
-                <span class="font-label-md text-white font-bold">${rev.author || 'Utente'}</span>
+                <span class="font-label-md text-white font-bold">${rev.author || i18n.t('reviews.user')}</span>
                 <span class="ml-auto text-primary-container font-label-sm flex items-center gap-1" id="display-rating-${rev.id}">
                     <span class="material-symbols-outlined text-[14px] material-fill-1">star</span>
                     <span>${rev.rating}/10</span>
@@ -276,12 +309,12 @@ function cancelEditReview(id) {
 // Update Review Function
 async function saveEditReview(id) {
     const user = localStorage.getItem('stoike_user');
-    if (!user) return alert('Devi essere loggato.');
+    if (!user) return alert(i18n.t('reviews.mustLogin'));
 
     const newText = document.getElementById(`edit-text-${id}`).value.trim();
     const newRating = document.getElementById(`edit-rating-${id}`).value;
 
-    if (!newText || !newRating) return alert('Compila tutti i campi.');
+    if (!newText || !newRating) return alert(i18n.t('reviews.fillAll'));
 
     try {
         const resp = await fetch(`/api/reviews/${id}`, {
@@ -340,7 +373,7 @@ async function executeDeleteReview() {
     const user = localStorage.getItem('stoike_user');
     if (!user) {
         closeDeleteModal();
-        return alert('Devi essere loggato.');
+        return alert(i18n.t('reviews.mustLogin'));
     }
 
     try {
@@ -354,7 +387,6 @@ async function executeDeleteReview() {
         if (!data.success) throw new Error(data.message);
         
         closeDeleteModal();
-        alert('Recensione eliminata con successo!');
         // Reload all reviews for the current movie
         await loadReviews(currentMovieId);
     } catch (err) {
@@ -376,7 +408,7 @@ async function addReview() {
     errorEl.classList.add('hidden');
 
     if (!author || !rating || !text) {
-        errorEl.innerText = 'Compila tutti i campi.';
+        errorEl.innerText = i18n.t('reviews.fillAll');
         errorEl.classList.remove('hidden');
         return;
     }

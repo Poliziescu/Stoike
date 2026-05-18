@@ -27,11 +27,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             const gridMovies = movies.slice(1);
             gridEl.innerHTML = gridMovies.map(movie => renderMovieCard(movie)).join('');
         } else {
-            gridEl.innerHTML = '<div class="col-span-full text-center text-on-surface-variant py-12">Nessun film in evidenza al momento.</div>';
+            gridEl.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-12">${i18n.t('home.noMovies')}</div>`;
         }
     } catch (e) {
         console.error('Error loading home content:', e);
-        gridEl.innerHTML = '<div class="col-span-full text-center text-red-400 py-12">Errore nel recupero dei film di tendenza.</div>';
+        gridEl.innerHTML = `<div class="col-span-full text-center text-red-400 py-12">${i18n.t('home.errorLoading')}</div>`;
     }
 });
 
@@ -47,8 +47,8 @@ function renderHero(movie) {
     const watchBtn = document.getElementById('hero-watch-btn');
 
     if (backdropEl) backdropEl.src = movie.backdrop_url || movie.poster_url || '';
-    if (titleEl) titleEl.innerText = movie.title || 'Senza Titolo';
-    if (synopsisEl) synopsisEl.innerText = movie.synopsis || 'Nessuna trama disponibile per questo capolavoro.';
+    if (titleEl) titleEl.innerText = movie.title || i18n.t('home.noTitle');
+    if (synopsisEl) synopsisEl.innerText = movie.synopsis || i18n.t('home.noSynopsis');
 
     // Setup navigation handlers to movie.html detailing page
     const goToDetails = () => {

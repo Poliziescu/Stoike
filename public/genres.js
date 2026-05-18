@@ -47,7 +47,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.className = "genre-btn px-6 py-3 bg-primary-container text-black font-label-md text-label-md rounded-full shadow-lg transition-all duration-300 transform scale-105";
 
             // Load genre movies
-            gridEl.innerHTML = '<div class="col-span-full text-center py-12"><span class="opacity-50">Caricamento film...</span></div>';
+            gridEl.innerHTML = `<div class="col-span-full text-center py-12"><span class="opacity-50">${i18n.t('genres.loadingMovies')}</span></div>`;
             
             let endpoint = '/trending/movie/week';
             if (genreId) {
@@ -55,7 +55,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             if (sectionTitle) {
-                sectionTitle.innerText = genreId ? `Genere: ${genreName}` : 'Tutti i generi';
+                sectionTitle.innerText = genreId ? `${i18n.t('genres.genreLabel')} ${genreName}` : i18n.t('genres.allGenres');
             }
 
             try {
@@ -64,10 +64,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     const movies = data.results.map(m => mapTMDBMovie(m));
                     gridEl.innerHTML = movies.map(movie => renderMovieCard(movie)).join('');
                 } else {
-                    gridEl.innerHTML = '<div class="col-span-full text-center text-on-surface-variant py-12">Nessun film trovato per questo genere.</div>';
+                    gridEl.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-12">${i18n.t('genres.noMovies')}</div>`;
                 }
             } catch (e) {
-                gridEl.innerHTML = '<div class="col-span-full text-center text-red-400 py-12">Errore di rete durante il caricamento dei film.</div>';
+                gridEl.innerHTML = `<div class="col-span-full text-center text-red-400 py-12">${i18n.t('genres.error')}</div>`;
             }
         });
     });

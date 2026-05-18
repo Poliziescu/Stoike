@@ -101,9 +101,7 @@ app.get('/api/tmdb/*', async (req, res) => {
     const endpoint = req.params[0];
     const params = { ...req.query };
     params.api_key = TMDB_API_KEY;
-    if (!params.language) {
-        params.language = 'it-IT';
-    }
+    // Language is now sent by the frontend based on user i18n selection
     // Rimuove cache buster parametro _t
     if (params._t) {
         delete params._t;

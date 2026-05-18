@@ -20,24 +20,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const type = params.get('type');
 
     let endpoint = '/trending/movie/week';
-    let pageTitle = 'Catalogo Film';
+    let pageTitle = i18n.t('list.catalog');
 
     if (query) {
-        pageTitle = `Risultati per: "${query}"`;
+        pageTitle = `${i18n.t('list.resultsFor')} "${query}"`;
         endpoint = `/search/movie?query=${encodeURIComponent(query)}`;
     } else if (type) {
         if (type === 'top_rated') {
-            pageTitle = 'Top Rated';
+            pageTitle = i18n.t('list.topRated');
             endpoint = '/movie/top_rated';
         } else if (type === 'new_releases') {
-            pageTitle = 'New Releases';
+            pageTitle = i18n.t('list.newReleases');
             const today = new Date().toISOString().split('T')[0];
             endpoint = `/discover/movie?region=IT&with_release_type=2|3&primary_release_date.gte=${today}`;
         } else if (type === 'coming_soon') {
-            pageTitle = 'Coming Soon';
+            pageTitle = i18n.t('list.comingSoon');
             endpoint = '/movie/upcoming';
         } else if (type === 'collection') {
-            pageTitle = 'Stoike Collection';
+            pageTitle = i18n.t('list.collection');
             endpoint = '/discover/movie?sort_by=vote_average.desc&vote_count.gte=1000';
         }
     }
@@ -53,12 +53,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             gridEl.innerHTML = `
                 <div class="col-span-full text-center py-16 text-on-surface-variant">
                     <span class="material-symbols-outlined text-[48px] mb-2 block opacity-40">search_off</span>
-                    Nessun film trovato per questa categoria o ricerca.
+                    ${i18n.t('list.noMovies')}
                 </div>
             `;
         }
     } catch (e) {
         console.error('Error loading list:', e);
-        gridEl.innerHTML = '<div class="col-span-full text-center text-red-400 py-12">Errore nel caricamento dei dati. Riprova più tardi.</div>';
+        gridEl.innerHTML = `<div class="col-span-full text-center text-red-400 py-12">${i18n.t('list.error')}</div>`;
     }
 });

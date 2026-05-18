@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Stoike - Lista Film</title>
+    <title>Stoike - Cerca Attore &amp; Cast</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
@@ -25,7 +25,7 @@
             <div class="hidden md:flex items-center gap-md">
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/index.html" data-i18n="nav.movies">Movies</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/genres.html" data-i18n="nav.genres">Genres</a>
-                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/actors.html" data-i18n="nav.actors">Actors</a>
+                <a class="text-primary-container font-bold border-b-2 border-primary-container pb-1 hover:bg-white/5 transition-all duration-300 opacity-80 scale-95 transition-transform font-headline-sm text-headline-sm" href="/actors.html" data-i18n="nav.actors">Actors</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="#" data-i18n="nav.community">Community</a>
             </div>
             <div class="flex items-center gap-sm">
@@ -116,13 +116,89 @@
         </aside>
 
         <!-- Main Content Canvas -->
-        <main id="main-content" class="flex-1 p-margin-mobile md:p-margin-desktop overflow-y-auto">
-            <section class="mb-12">
-                <h1 id="list-title" class="font-display-md text-display-md text-white font-bold tracking-tight mb-8">Lista Film</h1>
-                <div id="movies-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-md md:gap-lg">
-                    <div class="col-span-full text-center text-on-surface-variant py-12">Caricamento in corso...</div>
+        <main id="main-content" class="flex-1 px-margin-mobile pb-margin-mobile pt-6 md:px-margin-desktop md:pb-margin-desktop md:pt-10 overflow-y-auto">
+            <!-- Dedicated Actor Search Bar Section -->
+            <section class="flex flex-col gap-6 mb-10">
+                <h1 class="font-display-md text-display-md text-white font-bold tracking-tight">Cerca Attore &amp; Cast</h1>
+                <div class="flex flex-col sm:flex-row gap-3 max-w-2xl">
+                    <input id="actor-search-input" class="flex-1 bg-black/60 border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all font-body-md text-body-md outline-none" placeholder="Inserisci il nome di un attore o attrice..." type="text" autocomplete="off" />
+                    <button id="actor-search-btn" class="px-6 py-3 bg-primary-container text-black font-label-md rounded-lg hover:bg-primary transition-all flex items-center justify-center gap-2 font-medium">
+                        <span class="material-symbols-outlined text-[20px]">search</span>
+                        Cerca
+                    </button>
                 </div>
             </section>
+
+            <!-- Popular / Trending Actors Grid (visible by default) -->
+            <section id="popular-actors-section" class="mb-12">
+                <h2 class="font-headline-md text-headline-md text-white font-bold tracking-tight mb-8 flex items-center gap-2.5">
+                    <span class="material-symbols-outlined text-primary-container text-[24px]">trending_up</span>
+                    Attori Popolari
+                </h2>
+                <div id="popular-actors-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-md md:gap-lg">
+                    <div class="col-span-full text-center text-on-surface-variant py-12">
+                        <span class="material-symbols-outlined animate-spin text-[36px] align-middle mr-2 text-primary-container">sync</span>
+                        Caricamento attori popolari...
+                    </div>
+                </div>
+            </section>
+
+            <!-- Loading Indicator -->
+            <div id="actor-loading" class="hidden text-center text-on-surface-variant py-12">
+                <span class="material-symbols-outlined animate-spin text-[36px] align-middle mr-2 text-primary-container">sync</span>
+                Caricamento informazioni in corso...
+            </div>
+
+            <!-- Error Banner (Custom requested error warning) -->
+            <div id="actor-error-message" class="hidden bg-red-500/10 border border-red-500/30 text-red-200 p-6 rounded-2xl text-center max-w-2xl mx-auto shadow-2xl flex items-center justify-center gap-3">
+                <span class="material-symbols-outlined text-red-400 text-[28px]">error</span>
+                <span class="font-headline-sm text-headline-sm font-semibold tracking-wide">Ci scusiamo non abbiamo trovato informazioni su questa persona</span>
+            </div>
+
+            <!-- Actor Biography Card (Premium Glassmorphic layout) -->
+            <div id="actor-profile-card" class="hidden flex-col lg:flex-row gap-8 lg:gap-12 mb-12 p-6 md:p-8 glass-panel border border-white/10 rounded-2xl shadow-2xl relative overflow-hidden">
+                <div class="absolute -right-20 -top-20 w-80 h-80 bg-primary-container/5 rounded-full blur-3xl pointer-events-none"></div>
+                <!-- Actor Portrait -->
+                <div class="flex-shrink-0 w-full max-w-[220px] mx-auto lg:mx-0">
+                    <img id="actor-photo" alt="" class="w-full rounded-xl shadow-2xl border border-white/10 aspect-[2/3] object-cover" />
+                </div>
+                <!-- Details & Bio -->
+                <div class="flex-grow min-w-0 flex flex-col justify-between">
+                    <div>
+                        <h2 id="actor-name" class="font-display-lg-mobile text-display-lg-mobile md:text-[2.5rem] md:leading-tight text-white mb-4 font-bold tracking-tight"></h2>
+                        <!-- Meta facts -->
+                        <div class="flex flex-wrap gap-x-6 gap-y-2 mb-6 text-on-surface-variant font-label-md text-label-md border-b border-outline-variant/10 pb-4">
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary-container text-[18px]">cake</span>
+                                <span id="actor-birthday"></span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary-container text-[18px]">location_on</span>
+                                <span id="actor-birthplace" class="truncate max-w-xs md:max-w-md"></span>
+                            </div>
+                        </div>
+                        <!-- Biography -->
+                        <div class="mb-4">
+                            <h3 class="font-headline-sm text-headline-sm text-white mb-2.5 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary-container text-[20px]">person_pin</span>
+                                Biografia
+                            </h3>
+                            <p id="actor-biography" class="font-body-md text-body-md text-on-surface-variant leading-relaxed text-justify max-h-[300px] overflow-y-auto pr-2"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actor Filmography / Credits Section -->
+            <div id="actor-movies-section" class="hidden">
+                <h2 id="filmography-heading" class="font-headline-md text-headline-md text-white font-bold tracking-tight mb-8 flex items-center gap-2.5">
+                    <span class="material-symbols-outlined text-primary-container text-[24px]">movie_filter</span>
+                    Filmografia di <span id="filmography-actor-name" class="text-primary-container font-semibold"></span>
+                </h2>
+                <div id="movies-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-md md:gap-lg">
+                    <!-- Movie credits cards injected dynamically -->
+                </div>
+            </div>
         </main>
     </div>
 
@@ -132,7 +208,7 @@
             <span class="material-symbols-outlined">home</span>
             <span data-i18n="bottomNav.home">Home</span>
         </a>
-        <a class="flex flex-col items-center justify-center text-primary-container drop-shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:opacity-100 scale-110 duration-200" href="/list.html?type=top_rated">
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/list.html?type=top_rated">
             <span class="material-symbols-outlined">search</span>
             <span data-i18n="bottomNav.search">Cerca</span>
         </a>
@@ -209,6 +285,6 @@
     <!-- Layout & Component Logic -->
     <script src="i18n.js"></script>
     <script src="common.js"></script>
-    <script src="list.js"></script>
+    <script src="actors.js"></script>
 </body>
 </html>
