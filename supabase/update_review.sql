@@ -5,7 +5,7 @@
 -- =============================================
 
 CREATE OR REPLACE FUNCTION update_review(
-    p_review_id UUID, 
+    p_review_id TEXT, 
     p_username TEXT, 
     p_new_text TEXT, 
     p_new_rating NUMERIC
@@ -25,11 +25,12 @@ BEGIN
     UPDATE reviews 
     SET review_text = p_new_text, 
         rating = p_new_rating
-    WHERE id = p_review_id;
+    WHERE id = p_review_id::UUID;
 
     RETURN json_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
 
 
 -- =============================================

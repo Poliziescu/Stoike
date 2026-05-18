@@ -1,0 +1,551 @@
+/**
+ * STOIKE — Backend Server (Node.js Express)
+ * Gestisce le API routes per TMDb, autenticazione e recensioni.
+ * Le chiavi API sono nascoste lato server in .env.
+ */
+
+const express = require('express');
+const cors = require('cors');
+const dotenv = require('dotenv');
+const axios = require('axios');
+const path = require('path');
+const fs = require('fs');
+const crypto = require('crypto');
+
+// Carica le variabili d'ambiente dal file .env
+dotenv.config();
+if (fs.existsSync(path.join(__dirname, 'backend/.env'))) {
+    dotenv.config({ path: path.join(__dirname, 'backend/.env') });
+}
+
+const app = express();
+const PORT = process.env.PORT || 5001;
+
+// Configura CORS
+app.use(cors());
+
+// Selettore del body parser: Raw Buffer per Webhook (per validare la firma HMAC), JSON per tutto il resto
+app.use((req, res, next) => {
+    if (req.originalUrl === '/api/webhook/github') {
+        next();
+    } else {
+        express.json()(req, res, next);
+    }
+});
+
+// Configurazione variabili d'ambiente
+const TMDB_API_KEY = process.env.TMDB_API_KEY;
+const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+// Headers di utility per le richieste Supabase RPC/REST
+function supabaseHeaders() {
+    return {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': 'return=representation'
+    };
+}
+
+// =========================================
+// MAPPATURA DI TUTTE LE PAGINE FRONTEND (ROUTING CLEAN)
+// Evita qualsiasi errore 404 durante la navigazione
+// =========================================
+
+// Home / Index
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.get('/index', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+app.get('/index.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Genres
+app.get('/genres', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'genres.html'));
+});
+app.get('/genres.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'genres.html'));
+});
+
+// Movie Details
+app.get('/movie', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'movie.html'));
+});
+app.get('/movie.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'movie.html'));
+});
+
+// Search & Catalog Lists
+app.get('/list', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'list.html'));
+});
+app.get('/list.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'list.html'));
+});
+
+
+// Serve le risorse statiche (JS, CSS, immagini) della cartella public
+app.use(express.static(path.join(__dirname, 'public')));
+
+
+// =========================================
+// PROXY TMDb API
+// =========================================
+app.get('/api/tmdb/*', async (req, res) => {
+    const endpoint = req.params[0];
+    const params = { ...req.query };
+    params.api_key = TMDB_API_KEY;
+    if (!params.language) {
+        params.language = 'it-IT';
+    }
+    // Rimuove cache buster parametro _t
+    if (params._t) {
+        delete params._t;
+    }
+
+    const targetUrl = `${TMDB_BASE_URL}/${endpoint}`;
+    console.log(`🔍 [TMDb Proxy] Chiamata a: ${targetUrl} con parametri:`, params);
+
+    try {
+        const response = await axios.get(targetUrl, {
+            params,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            timeout: 10000
+        });
+        console.log(`✅ [TMDb Proxy] Risposta ricevuta: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [TMDb Proxy] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+
+// =========================================
+// AUTENTICAZIONE (via Supabase RPC)
+// =========================================
+app.post('/api/auth/login', async (req, res) => {
+    const { username, password } = req.body || {};
+    console.log(`🔑 [Auth Login] Richiesta login per: '${username}'`);
+
+    try {
+        const response = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/login_user`, {
+            p_username: username,
+            p_password: password
+        }, {
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`🔑 [Auth Login] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Auth Login] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+    const { username, password } = req.body || {};
+    console.log(`🔑 [Auth Register] Richiesta registrazione per: '${username}'`);
+
+    try {
+        const response = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/register_user`, {
+            p_username: username,
+            p_password: password
+        }, {
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`🔑 [Auth Register] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Auth Register] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+
+// =========================================
+// RECENSIONI (Supabase integration)
+// =========================================
+app.get('/api/reviews/:movie_id', async (req, res) => {
+    const movie_id = req.params.movie_id;
+    console.log(`💬 [Reviews Get] Chiamata per film ID: ${movie_id}`);
+
+    try {
+        const response = await axios.get(`${SUPABASE_URL}/rest/v1/reviews`, {
+            params: {
+                tmdb_movie_id: `eq.${movie_id}`,
+                order: 'created_at.desc',
+                select: '*'
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`💬 [Reviews Get] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Reviews Get] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+app.post('/api/reviews', async (req, res) => {
+    const { username, tmdb_movie_id, author, review_text, rating } = req.body || {};
+    console.log(`💬 [Review Insert] Utente '${username}' inserisce per film ID ${tmdb_movie_id}`);
+
+    try {
+        const response = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/insert_review`, {
+            p_username: username,
+            p_tmdb_movie_id: tmdb_movie_id,
+            p_author: author,
+            p_review_text: review_text,
+            p_rating: rating
+        }, {
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`💬 [Review Insert] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Review Insert] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+app.put('/api/reviews/:review_id', async (req, res) => {
+    const review_id = req.params.review_id;
+    const { username, review_text, rating } = req.body || {};
+    console.log(`💬 [Review Update] Utente '${username}' modifica recensione ID ${review_id}`);
+
+    try {
+        const response = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/update_review`, {
+            p_review_id: review_id,
+            p_username: username,
+            p_new_text: review_text,
+            p_new_rating: rating
+        }, {
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`💬 [Review Update] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Review Update] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+app.delete('/api/reviews/:review_id', async (req, res) => {
+    const review_id = req.params.review_id;
+    const { username } = req.body || {};
+    console.log(`🗑️ [Review Delete] Utente '${username}' richiede cancellazione recensione ID ${review_id}`);
+
+    if (!username) {
+        return res.status(400).json({ error: 'Username obbligatorio' });
+    }
+
+    try {
+        const response = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/delete_review`, {
+            p_review_id: review_id,
+            p_username: username
+        }, {
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`🗑️ [Review Delete] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Review Delete] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+
+// =========================================
+// GESTIONE TICKET BUG REPORT (GITHUB API & WEBHOOK)
+// =========================================
+const rateLimitDb = new Map();
+const RATE_LIMIT_LIMIT = 5;
+const RATE_LIMIT_WINDOW = 3600 * 1000; // 1 ora in ms
+
+app.post('/api/report-bug', async (req, res) => {
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const now = Date.now();
+
+    // Pulisce e controlla il Rate Limiter per l'IP
+    let timestamps = rateLimitDb.get(ip) || [];
+    timestamps = timestamps.filter(t => now - t < RATE_LIMIT_WINDOW);
+    rateLimitDb.set(ip, timestamps);
+
+    if (timestamps.length >= RATE_LIMIT_LIMIT) {
+        console.warn(`⚠️ [Rate Limit] Bloccata richiesta da IP ${ip} (troppe segnalazioni)`);
+        return res.status(429).json({
+            success: false,
+            message: 'Troppe segnalazioni inviate. Riprova più tardi (max 5 all\'ora).'
+        });
+    }
+
+    timestamps.push(now);
+
+    const { title, description, email, currentPage, browserInfo } = req.body || {};
+    
+    if (!title || !description) {
+        return res.status(400).json({ success: false, message: 'Titolo e descrizione sono obbligatori.' });
+    }
+
+    // Validazione formale dell'email
+    if (email) {
+        const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!emailPattern.test(email)) {
+            return res.status(400).json({ success: false, message: 'Indirizzo email non valido.' });
+        }
+    }
+
+    // Credenziali GitHub
+    const githubToken = process.env.GITHUB_TOKEN;
+    const githubOwner = process.env.GITHUB_OWNER;
+    const githubRepo = process.env.GITHUB_REPO;
+
+    if (!githubToken || !githubOwner || !githubRepo) {
+        console.error("❌ [GitHub API] Configurazione incompleta in .env (mancano TOKEN/OWNER/REPO)");
+        return res.status(500).json({
+            success: false,
+            message: 'Configurazione del server incompleta (GitHub API non configurata).'
+        });
+    }
+
+    const issueBody = `# Bug Report
+
+## Titolo
+${title}
+
+## Descrizione del bug
+${description}
+
+## Informazioni aggiuntive
+- **Email utente**: ${email || 'Non inserita'}
+- **Pagina corrente**: ${currentPage}
+- **Browser Info**: ${browserInfo}
+`;
+
+    console.log(`🚀 [GitHub API] Creazione issue nel repo ${githubOwner}/${githubRepo} per bug: '${title}'...`);
+    try {
+        const response = await axios.post(
+            `https://api.github.com/repos/${githubOwner}/${githubRepo}/issues`,
+            {
+                title: `[Bug Report] ${title}`,
+                body: issueBody,
+                labels: ['bug', 'user-report']
+            },
+            {
+                headers: {
+                    'Authorization': `token ${githubToken}`,
+                    'Accept': 'application/vnd.github.v3+json',
+                    'Content-Type': 'application/json'
+                },
+                timeout: 10000
+            }
+        );
+
+        console.log(`✅ [GitHub API] Risposta ricevuta: Stato ${response.status}`);
+        if (response.status === 201) {
+            return res.json({
+                success: true,
+                message: 'Segnalazione creata con successo!',
+                issue_url: response.data.html_url
+            });
+        } else {
+            console.error(`❌ [GitHub API] Creazione fallita:`, response.data);
+            return res.status(502).json({
+                success: false,
+                message: `Errore risposta GitHub API. Stato: ${response.status}`
+            });
+        }
+    } catch (error) {
+        console.error(`❌ [GitHub API] Eccezione di rete:`, error.message);
+        return res.status(500).json({ success: false, message: 'Errore di connessione con le API di GitHub.' });
+    }
+});
+
+
+// Webhook firma di verifica
+function verifyGithubSignature(rawBody, signatureHeader) {
+    if (!signatureHeader) return false;
+    const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+        console.warn("⚠️ [Webhook GitHub] Nessun GITHUB_WEBHOOK_SECRET configurato in .env!");
+        return false;
+    }
+
+    if (!signatureHeader.includes('=')) return false;
+    const [shaName, signature] = signatureHeader.split('=');
+    if (shaName !== 'sha256') return false;
+
+    const hmac = crypto.createHmac('sha256', webhookSecret);
+    const digest = hmac.update(rawBody).digest('hex');
+    try {
+        return crypto.timingSafeEqual(Buffer.from(digest, 'utf8'), Buffer.from(signature, 'utf8'));
+    } catch (err) {
+        return false;
+    }
+}
+
+// GitHub Webhook Route
+app.post('/api/webhook/github', express.raw({ type: 'application/json' }), async (req, res) => {
+    const signature = req.headers['x-hub-signature-256'];
+    const rawBody = req.body; // Buffer grazie a express.raw
+
+    if (!verifyGithubSignature(rawBody, signature)) {
+        console.error("❌ [Webhook GitHub] Firma HMAC SHA-256 non valida o assente.");
+        return res.status(401).json({ success: false, message: 'Firma non valida.' });
+    }
+
+    let payload;
+    try {
+        payload = JSON.parse(rawBody.toString('utf8'));
+    } catch (err) {
+        return res.status(400).json({ success: false, message: 'JSON non valido.' });
+    }
+
+    if (!payload) {
+        return res.status(400).json({ success: false, message: 'Payload vuoto.' });
+    }
+
+    const action = payload.action;
+    const issue = payload.issue || {};
+
+    if (action === 'closed') {
+        const issueTitle = issue.title || '';
+        const issueBody = issue.body || '';
+        console.log(`🔔 [Webhook GitHub] Ticket chiuso: '${issueTitle}'`);
+
+        // Estrae email e titolo originale
+        const emailMatch = issueBody.match(/## Email utente\s*\r?\n\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+        const titleMatch = issueBody.match(/## Titolo\s*\r?\n\s*([^\r\n]+)/i);
+
+        const userEmail = emailMatch ? emailMatch[1].trim() : null;
+        let originalTitle = titleMatch ? titleMatch[1].trim() : null;
+
+        if (!originalTitle) {
+            originalTitle = issueTitle.replace('[Bug Report] ', '');
+        }
+
+        if (!userEmail) {
+            console.log("ℹ️ [Webhook GitHub] Nessun indirizzo email trovato nel ticket. Invio notifica saltato.");
+            return res.json({ success: true, message: 'Nessuna email nel ticket, notifica saltata.' });
+        }
+
+        console.log(`📧 [Webhook GitHub] Invio email di notifica risoluzione a '${userEmail}'...`);
+        const subject = `[Stoike] Problema Risolto: ${originalTitle}`;
+
+        const emailHtml = `
+        <html>
+        <body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #0b0c10; color: #c5c6c7;">
+            <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #121318; border: 1px solid rgba(255, 215, 0, 0.1); border-radius: 12px; margin-top: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="color: #ffd700; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">Stoike</h1>
+                    <div style="height: 2px; width: 60px; background: linear-gradient(90deg, transparent, #ffd700, transparent); margin: 15px auto 0 auto;"></div>
+                </div>
+                <div style="font-size: 16px; line-height: 1.6; color: #c5c6c7; margin-bottom: 30px;">
+                    <p style="font-size: 18px; color: #ffffff; font-weight: 600; margin-bottom: 20px;">Gentile Utente,</p>
+                    <p>Siamo felici di comunicarti che il problema tecnico che ci hai segnalato è stato <strong>completamente risolto</strong> dal nostro team di supporto.</p>
+                    
+                    <div style="background-color: rgba(255,215,0,0.03); border-left: 4px solid #ffd700; padding: 15px 20px; margin: 25px 0; border-radius: 4px;">
+                        <span style="font-size: 12px; text-transform: uppercase; color: #ffd700; font-weight: 700; display: block; margin-bottom: 5px;">Segnalazione Risolta</span>
+                        <strong style="color: #ffffff; font-size: 16px;">${originalTitle}</strong>
+                    </div>
+                    
+                    <p>Adesso puoi tornare a goderti Stoike al massimo delle sue funzionalità. Se riscontri ulteriori problemi, non esitare a contattarci di nuovo tramite il nostro pulsante di supporto fluttuante.</p>
+                </div>
+                <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px; font-size: 13px; color: rgba(255,255,255,0.4);">
+                    <p>Grazie per averci aiutato a rendere Stoike un posto migliore!</p>
+                    <p style="margin-top: 5px; font-weight: 600; color: #ffd700;">Il Team di Supporto Stoike</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        `;
+
+        const smtpHost = process.env.SMTP_HOST;
+        const smtpPort = process.env.SMTP_PORT || '587';
+        const smtpUser = process.env.SMTP_USER;
+        const smtpPass = process.env.SMTP_PASS;
+        const smtpFrom = process.env.SMTP_FROM || '"Stoike Support" <noreply@stoike.cinema>';
+
+        if (!smtpHost || !smtpUser || !smtpPass) {
+            console.log("====================================================================");
+            console.log("✉️  [MOCK EMAIL NOTIFICATION - TERMINAL LOGGING FALLBACK]");
+            console.log(`FROM:    ${smtpFrom}`);
+            console.log(`TO:      ${userEmail}`);
+            console.log(`SUBJECT: ${subject}`);
+            console.log("--------------------------------------------------------------------");
+            console.log(`Gentile Utente, il problema '${originalTitle}' è stato risolto con successo!`);
+            console.log("====================================================================");
+        } else {
+            const nodemailer = require('nodemailer');
+            try {
+                const transporter = nodemailer.createTransport({
+                    host: smtpHost,
+                    port: parseInt(smtpPort),
+                    secure: parseInt(smtpPort) === 465,
+                    auth: {
+                        user: smtpUser,
+                        pass: smtpPass
+                    }
+                });
+
+                await transporter.sendMail({
+                    from: smtpFrom,
+                    to: userEmail,
+                    subject: subject,
+                    html: emailHtml
+                });
+                console.log("✅ [Webhook GitHub] Email di risoluzione inviata con successo tramite SMTP!");
+            } catch (smtpErr) {
+                console.error(`❌ [Webhook GitHub] Errore nell'invio SMTP:`, smtpErr.message);
+                console.log("====================================================================");
+                console.log("✉️  [FALLBACK - MOCK EMAIL LOGGED TO TERMINAL]");
+                console.log(`FROM:    ${smtpFrom}`);
+                console.log(`TO:      ${userEmail}`);
+                console.log(`SUBJECT: ${subject}`);
+                console.log("====================================================================");
+            }
+        }
+    }
+
+    return res.json({ success: true, message: 'Webhook elaborato con successo.' });
+});
+
+
+// =========================================
+// AVVIO SERVER
+// =========================================
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`=============================================`);
+    console.log(`🎬 Stoike Node.js Server avviato con successo!`);
+    console.log(`Disponibile all'indirizzo: http://localhost:${PORT}`);
+    console.log(`=============================================`);
+});

@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Stoike - Home</title>
+    <title>Stoike - Dettagli Film</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
@@ -23,7 +23,7 @@
                 </div>
             </div>
             <div class="hidden md:flex items-center gap-md">
-                <a class="text-primary-container font-bold border-b-2 border-primary-container pb-1 hover:bg-white/5 transition-all duration-300 opacity-80 scale-95 transition-transform font-headline-sm text-headline-sm" href="/index.html">Movies</a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/index.html">Movies</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/genres.html">Genres</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="#">Awards</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="#">Community</a>
@@ -51,6 +51,23 @@
         </div>
     </nav>
 
+    <!-- Sub-Header row (only in movie details) -->
+    <div id="sub-header" class="fixed top-20 left-0 w-full z-40 bg-background/85 backdrop-blur-xl border-b border-outline-variant/10 text-primary-container transition-all duration-300 transform ease-in-out">
+        <div class="flex justify-between items-center h-14 px-margin-mobile md:px-margin-desktop max-w-full mx-auto">
+            <!-- Under Stoike Logo (Left) -->
+            <div class="flex items-center">
+                <button onclick="window.location.href='/index.html'" class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary-container transition-colors group font-label-md text-label-md">
+                    <span class="material-symbols-outlined group-hover:-translate-x-0.5 transition-transform text-[20px]">arrow_back</span>
+                    <span class="hidden sm:inline">Torna al catalogo</span>
+                </button>
+            </div>
+            <!-- Under Navbar links (Right) -->
+            <div class="flex items-center">
+                <span id="sub-header-movie-title" class="text-white font-headline-sm text-[16px] md:text-headline-sm font-semibold tracking-wide truncate max-w-[150px] sm:max-w-xs md:max-w-md"></span>
+            </div>
+        </div>
+    </div>
+
     <!-- Sidebar Edge Hover Trigger & Blur Backdrop Overlay -->
     <div id="sidebar-trigger" class="fixed left-0 top-0 bottom-0 w-6 z-[80] bg-transparent"></div>
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[90] hidden opacity-0 transition-all duration-300"></div>
@@ -69,7 +86,7 @@
                 </button>
             </div>
             <nav class="flex-1 flex flex-col gap-2 px-sm">
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary-container/10 text-primary-container border-r-4 border-primary-container hover:bg-surface-container-highest" href="/index.html">
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:bg-surface-container-high transition-colors" href="/index.html">
                     <span class="material-symbols-outlined">trending_up</span>
                     <span>Trending</span>
                 </a>
@@ -104,41 +121,121 @@
         </aside>
 
         <!-- Main Content Canvas -->
-        <main id="main-content" class="flex-1 p-margin-mobile md:p-margin-desktop overflow-y-auto">
-            <!-- Hero Section -->
-            <section id="hero-section" class="relative w-full aspect-[21/9] rounded-xl overflow-hidden mb-lg glass-panel cursor-pointer hover:ring-2 hover:ring-primary-container transition-all">
-                <img id="hero-backdrop" alt="Hero Movie Backdrop" class="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3MXchIKCZxYsnX7MsyYJAKCOIUBNuTGjc2Snmp4hoKGgzyNSU1PRdV--_tuqRU7egy8qo0Omir8WHRToIUafvh6hCuijHTNLNzVYrgIIvKQabmG-Sjw-TI-AaD0pbITJcrEOJxtdVrKMfBjU5Q2EU9oSoVoVqhYFS5FAxzLPcP8u5M8fbntaXwPv7m25vtrec9FBvc2g68wax09o3TweVwhjTdcz8nO6Jtso6UMlAJ1hzBat5tWu_lPhIAG7D4HAO3n2EryDs-R5I" />
-                <div class="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent"></div>
-                <div class="absolute bottom-0 left-0 p-lg w-full md:w-2/3">
-                    <span class="inline-block px-3 py-1 rounded-full glass-panel border border-white/20 font-label-sm text-label-sm mb-4 text-primary-container">
-                        Ultimo Arrivo</span>
-                    <h1 id="hero-title" class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-white mb-2 drop-shadow-md">
-                        Caricamento...</h1>
-                    <p id="hero-synopsis" class="font-body-md text-body-md text-on-surface-variant mb-6 line-clamp-2">Attendere prego, stiamo recuperando l'ultimo capolavoro...</p>
-                    <div class="flex gap-4">
-                        <button id="hero-watch-btn" class="px-6 py-3 bg-primary-container text-black font-label-md text-label-md rounded flex items-center gap-2 hover:bg-primary transition-colors">
-                            <span class="material-symbols-outlined material-fill-1">play_arrow</span> Scopri di più
-                        </button>
-                        <button class="px-6 py-3 glass-panel border border-white/20 font-label-md text-label-md rounded flex items-center gap-2 hover:bg-white/10 transition-colors">
-                            <span class="material-symbols-outlined">add</span> Add to List
-                        </button>
+        <main id="main-content" class="flex-1 px-margin-mobile pb-margin-mobile pt-[72px] md:px-margin-desktop md:pb-margin-desktop md:pt-[120px] overflow-y-auto">
+            <div id="movie-detail">
+                
+                <!-- Top section: Poster + Info -->
+                <div class="flex flex-col lg:flex-row gap-8 lg:gap-12 mb-10">
+                    <!-- Poster -->
+                    <div class="flex-shrink-0 w-full max-w-[280px] mx-auto lg:mx-0 lg:max-w-[300px]">
+                        <img id="detail-poster" alt="" class="w-full rounded-xl shadow-2xl border border-white/10" />
+                    </div>
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex flex-wrap items-center gap-3 mb-3">
+                            <span id="detail-genre" class="px-4 py-1.5 rounded-full glass-panel border border-white/20 font-label-sm text-label-sm text-primary-container"></span>
+                            <span id="detail-year" class="text-on-surface-variant font-label-sm text-label-sm"></span>
+                        </div>
+                        <h1 id="detail-title" class="font-display-lg-mobile text-display-lg-mobile md:text-[2.5rem] md:leading-tight text-white mb-4 break-words">Caricamento...</h1>
+                        <div class="flex items-center gap-2 mb-8">
+                            <span class="material-symbols-outlined text-primary-container material-fill-1 text-[28px]">star</span>
+                            <span id="detail-rating" class="text-primary-container font-headline-sm text-headline-sm"></span>
+                            <span class="text-on-surface-variant font-label-md text-label-md">/ 10</span>
+                        </div>
+                        
+                        <!-- Synopsis -->
+                        <div id="detail-synopsis-container" class="hidden mb-6">
+                            <h2 class="font-headline-sm text-headline-sm text-white mb-3 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-primary-container">description</span>
+                                Trama
+                            </h2>
+                            <p id="detail-synopsis" class="font-body-md text-body-md text-on-surface-variant leading-relaxed"></p>
+                        </div>
+                        
+                        <!-- Cast, Related (Franchise), Similar -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+                            <!-- Cast -->
+                            <div id="detail-cast-container" class="hidden">
+                                <h2 class="font-headline-sm text-headline-sm text-white mb-2 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary-container text-[20px]">group</span>
+                                    Cast Principale
+                                </h2>
+                                <p id="detail-cast" class="font-body-md text-body-md text-on-surface-variant leading-relaxed"></p>
+                            </div>
+                            <!-- Prequel & Sequel (Franchise) -->
+                            <div id="detail-related-container" class="hidden">
+                                <h2 class="font-headline-sm text-headline-sm text-white mb-2 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary-container text-[20px]">account_tree</span>
+                                    Prequel &amp; Sequel (Franchise)
+                                </h2>
+                                <div id="detail-related" class="flex flex-wrap gap-2.5 mt-2"></div>
+                            </div>
+                            <!-- Similar movies -->
+                            <div id="detail-similar-container" class="hidden md:col-span-2">
+                                <h2 class="font-headline-sm text-headline-sm text-white mb-2 flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-primary-container text-[20px]">movie</span>
+                                    Titoli Simili Suggeriti
+                                </h2>
+                                <div id="detail-similar" class="flex flex-wrap gap-2.5 mt-2"></div>
+                            </div>
+                        </div>
+
+                        <!-- Review (Supabase comments section) -->
+                        <div id="detail-review-container" class="hidden mb-12">
+                            <h2 class="font-headline-sm text-headline-sm text-white mb-3 flex items-center gap-2">
+                                <span class="material-symbols-outlined material-fill-1 text-primary-container">rate_review</span>
+                                Recensioni su Stoike
+                            </h2>
+                            <div id="detail-review" class="flex flex-col gap-4">
+                                <!-- Recensioni cards dynamically loaded here -->
+                            </div>
+                        </div>
+                        
+                        <!-- Write Review Form (Only for Admins) -->
+                        <div id="add-review-section" class="hidden mt-6">
+                            <h2 class="font-headline-sm text-headline-sm text-white mb-3 flex items-center gap-2">
+                                <span class="material-symbols-outlined material-fill-1 text-primary-container">add_comment</span>
+                                Aggiungi Recensione
+                            </h2>
+                            <div class="glass-panel border border-primary-container/30 rounded-xl p-6 flex flex-col gap-4">
+                                <div>
+                                    <label class="block font-label-sm text-on-surface-variant mb-1">Autore</label>
+                                    <input id="new-review-author" type="text" placeholder="Es. Cinematic Noir" class="w-full bg-black/50 border border-outline-variant/30 rounded px-4 py-2 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors" />
+                                </div>
+                                <div>
+                                    <label class="block font-label-sm text-on-surface-variant mb-1">Voto (0–10)</label>
+                                    <input id="new-review-rating" type="number" min="0" max="10" step="0.1" placeholder="Es. 8.5" class="w-28 bg-black/50 border border-outline-variant/30 rounded px-4 py-2 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors" />
+                                </div>
+                                <div>
+                                    <label class="block font-label-sm text-on-surface-variant mb-1">Testo Recensione</label>
+                                    <textarea id="new-review-text" rows="4" placeholder="Scrivi qui la tua recensione..." class="w-full bg-black/50 border border-outline-variant/30 rounded px-4 py-2 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors"></textarea>
+                                </div>
+                                <div id="new-review-error" class="hidden bg-red-500/20 text-red-300 font-label-sm p-3 rounded border border-red-500/30"></div>
+                                <button onclick="addReview()" class="self-start px-6 py-2 bg-primary-container text-black font-label-md rounded hover:bg-primary transition-colors flex items-center gap-2">
+                                    <span class="material-symbols-outlined text-[18px]">save</span> Salva Recensione
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
-            </section>
 
-            <!-- Trending Grid -->
-            <section>
-                <h2 id="section-title" class="font-headline-md text-headline-md mb-md border-l-4 border-primary-container pl-3">Trending Now</h2>
-                <div id="movies-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-gutter">
-                    <div class="col-span-full text-center text-on-surface-variant py-12">Caricamento in corso...</div>
+                <!-- Trailer (Full Width Video Section) -->
+                <div id="detail-trailer-container" class="hidden mt-12">
+                    <h2 class="font-headline-sm text-headline-sm text-white mb-4 flex items-center gap-2">
+                        <span class="material-symbols-outlined material-fill-1 text-primary-container">play_circle</span>
+                        Trailer Ufficiale
+                    </h2>
+                    <div class="aspect-video w-full max-w-4xl rounded-xl overflow-hidden glass-panel border border-white/10 shadow-2xl">
+                        <iframe id="detail-trailer" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                    </div>
                 </div>
-            </section>
+            </div>
         </main>
     </div>
 
     <!-- BottomNavBar -->
     <nav class="md:hidden flex justify-around items-center h-16 pb-safe w-full fixed bottom-0 z-50 rounded-t-xl bg-surface-container-lowest/90 backdrop-blur-2xl border-t border-outline-variant/20 shadow-xl text-primary-container font-label-sm text-label-sm">
-        <a class="flex flex-col items-center justify-center text-primary-container drop-shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:opacity-100 scale-110 duration-200" href="/index.html">
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/index.html">
             <span class="material-symbols-outlined">home</span>
             <span>Home</span>
         </a>
@@ -216,8 +313,37 @@
         </div>
     </div>
 
+    <!-- Delete Review Confirmation Modal -->
+    <div id="delete-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center">
+        <div id="delete-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"></div>
+        <div class="relative bg-surface-container w-11/12 max-w-md rounded-2xl shadow-2xl p-6 border border-outline-variant/20 z-10">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-headline-sm font-headline-sm text-primary-container flex items-center gap-2">
+                    <span class="material-symbols-outlined text-error">warning</span>
+                    Elimina Recensione
+                </h2>
+                <button id="delete-close" class="text-on-surface-variant hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="mb-6">
+                <p class="text-on-surface-variant font-body-md text-body-md leading-relaxed">
+                    Sei sicuro di voler eliminare definitivamente questa recensione dal sito? Questa operazione non può essere annullata.
+                </p>
+            </div>
+            <div class="flex gap-4 justify-end">
+                <button id="delete-cancel-btn" class="px-5 py-2.5 border border-outline-variant/30 text-on-surface-variant font-label-md rounded hover:bg-white/5 transition-colors">
+                    Annulla
+                </button>
+                <button id="delete-confirm-btn" class="px-5 py-2.5 bg-error-container text-white font-label-md rounded hover:bg-red-600 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">delete</span> Elimina
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Layout & Component Logic -->
     <script src="common.js"></script>
-    <script src="app.js"></script>
+    <script src="movie.js"></script>
 </body>
 </html>

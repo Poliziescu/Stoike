@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Stoike - Home</title>
+    <title>Stoike - Lista Film</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
@@ -23,7 +23,7 @@
                 </div>
             </div>
             <div class="hidden md:flex items-center gap-md">
-                <a class="text-primary-container font-bold border-b-2 border-primary-container pb-1 hover:bg-white/5 transition-all duration-300 opacity-80 scale-95 transition-transform font-headline-sm text-headline-sm" href="/index.html">Movies</a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/index.html">Movies</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/genres.html">Genres</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="#">Awards</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="#">Community</a>
@@ -69,7 +69,7 @@
                 </button>
             </div>
             <nav class="flex-1 flex flex-col gap-2 px-sm">
-                <a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary-container/10 text-primary-container border-r-4 border-primary-container hover:bg-surface-container-highest" href="/index.html">
+                <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-white/5 hover:bg-surface-container-high transition-colors" href="/index.html">
                     <span class="material-symbols-outlined">trending_up</span>
                     <span>Trending</span>
                 </a>
@@ -105,31 +105,9 @@
 
         <!-- Main Content Canvas -->
         <main id="main-content" class="flex-1 p-margin-mobile md:p-margin-desktop overflow-y-auto">
-            <!-- Hero Section -->
-            <section id="hero-section" class="relative w-full aspect-[21/9] rounded-xl overflow-hidden mb-lg glass-panel cursor-pointer hover:ring-2 hover:ring-primary-container transition-all">
-                <img id="hero-backdrop" alt="Hero Movie Backdrop" class="absolute inset-0 w-full h-full object-cover opacity-60 mix-blend-overlay" src="https://lh3.googleusercontent.com/aida-public/AB6AXuB3MXchIKCZxYsnX7MsyYJAKCOIUBNuTGjc2Snmp4hoKGgzyNSU1PRdV--_tuqRU7egy8qo0Omir8WHRToIUafvh6hCuijHTNLNzVYrgIIvKQabmG-Sjw-TI-AaD0pbITJcrEOJxtdVrKMfBjU5Q2EU9oSoVoVqhYFS5FAxzLPcP8u5M8fbntaXwPv7m25vtrec9FBvc2g68wax09o3TweVwhjTdcz8nO6Jtso6UMlAJ1hzBat5tWu_lPhIAG7D4HAO3n2EryDs-R5I" />
-                <div class="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent"></div>
-                <div class="absolute bottom-0 left-0 p-lg w-full md:w-2/3">
-                    <span class="inline-block px-3 py-1 rounded-full glass-panel border border-white/20 font-label-sm text-label-sm mb-4 text-primary-container">
-                        Ultimo Arrivo</span>
-                    <h1 id="hero-title" class="font-display-lg-mobile text-display-lg-mobile md:font-display-lg md:text-display-lg text-white mb-2 drop-shadow-md">
-                        Caricamento...</h1>
-                    <p id="hero-synopsis" class="font-body-md text-body-md text-on-surface-variant mb-6 line-clamp-2">Attendere prego, stiamo recuperando l'ultimo capolavoro...</p>
-                    <div class="flex gap-4">
-                        <button id="hero-watch-btn" class="px-6 py-3 bg-primary-container text-black font-label-md text-label-md rounded flex items-center gap-2 hover:bg-primary transition-colors">
-                            <span class="material-symbols-outlined material-fill-1">play_arrow</span> Scopri di più
-                        </button>
-                        <button class="px-6 py-3 glass-panel border border-white/20 font-label-md text-label-md rounded flex items-center gap-2 hover:bg-white/10 transition-colors">
-                            <span class="material-symbols-outlined">add</span> Add to List
-                        </button>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Trending Grid -->
-            <section>
-                <h2 id="section-title" class="font-headline-md text-headline-md mb-md border-l-4 border-primary-container pl-3">Trending Now</h2>
-                <div id="movies-grid" class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-gutter">
+            <section class="mb-12">
+                <h1 id="list-title" class="font-display-md text-display-md text-white font-bold tracking-tight mb-8">Lista Film</h1>
+                <div id="movies-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-md md:gap-lg">
                     <div class="col-span-full text-center text-on-surface-variant py-12">Caricamento in corso...</div>
                 </div>
             </section>
@@ -138,11 +116,11 @@
 
     <!-- BottomNavBar -->
     <nav class="md:hidden flex justify-around items-center h-16 pb-safe w-full fixed bottom-0 z-50 rounded-t-xl bg-surface-container-lowest/90 backdrop-blur-2xl border-t border-outline-variant/20 shadow-xl text-primary-container font-label-sm text-label-sm">
-        <a class="flex flex-col items-center justify-center text-primary-container drop-shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:opacity-100 scale-110 duration-200" href="/index.html">
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/index.html">
             <span class="material-symbols-outlined">home</span>
             <span>Home</span>
         </a>
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/list.html?type=top_rated">
+        <a class="flex flex-col items-center justify-center text-primary-container drop-shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:opacity-100 scale-110 duration-200" href="/list.html?type=top_rated">
             <span class="material-symbols-outlined">search</span>
             <span>Search</span>
         </a>
@@ -218,6 +196,6 @@
 
     <!-- Layout & Component Logic -->
     <script src="common.js"></script>
-    <script src="app.js"></script>
+    <script src="list.js"></script>
 </body>
 </html>

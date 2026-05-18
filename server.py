@@ -212,6 +212,34 @@ def update_review(review_id):
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/api/reviews/<review_id>', methods=['DELETE'])
+def delete_review(review_id):
+    """Cancella una recensione tramite la RPC delete_review di Supabase."""
+    # Ottiene i parametri JSON o query parameters per lo username
+    body = request.get_json() or {}
+    username = body.get('username') or request.args.get('username')
+    print(f"🗑️ [Review Delete] Utente '{username}' richiede cancellazione recensione ID {review_id}")
+    
+    if not username:
+        return jsonify({'error': 'Username obbligatorio'}), 400
+        
+    try:
+        resp = http_requests.post(
+            f'{SUPABASE_URL}/rest/v1/rpc/delete_review',
+            headers=supabase_headers(),
+            json={
+                'p_review_id': review_id,
+                'p_username': username
+            },
+            timeout=10
+        )
+        print(f"🗑️ [Review Delete] Risposta Supabase: Stato {resp.status_code}")
+        return jsonify(resp.json()), resp.status_code
+    except Exception as e:
+        print(f"❌ [Review Delete] ERRORE: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
 
 # =========================================
 # GESTIONE TICKET BUG REPORT (GITHUB API & WEBHOOK)

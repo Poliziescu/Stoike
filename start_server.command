@@ -7,12 +7,12 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 cd "$DIR"
 
 echo "============================================="
-echo "🎬 STOIKE - Avvio del Server Flask..."
+echo "🎬 STOIKE - Avvio del Server Node.js..."
 echo "============================================="
 
 # Controlla se le dipendenze sono installate
 echo "1. Installazione/Verifica delle dipendenze..."
-pip3 install -r requirements.txt
+npm install
 
 echo ""
 echo "2. Avvio del server..."
@@ -21,4 +21,5 @@ echo "Per arrestare il server, premi CTRL+C in questa finestra."
 echo "============================================="
 echo ""
 
-python3 server.py
+node server.js
+
