@@ -39,12 +39,16 @@
                     href="#">Community</a>
             </div>
             <div class="flex items-center gap-sm">
-                <div class="relative hidden md:block">
+                <div class="relative hidden md:block" id="search-container">
                     <input id="search-input"
-                        class="bg-black border-b border-outline-variant focus:border-primary-container focus:ring-0 text-on-background px-3 py-1 w-48 transition-colors"
-                        placeholder="Search..." type="text" />
-                    <span
-                        class="material-symbols-outlined absolute right-2 top-1 text-on-surface-variant material-fill-0 cursor-pointer" onclick="executeSearch()">search</span>
+                        class="bg-black border-b border-outline-variant focus:border-primary-container focus:ring-0 text-on-background px-3 py-1 w-64 transition-colors"
+                        placeholder="Search..." type="text" autocomplete="off" />
+                    <span class="material-symbols-outlined absolute right-2 top-1 text-on-surface-variant material-fill-0 cursor-pointer" onclick="executeSearch()">search</span>
+                    
+                    <!-- Auto-suggest Dropdown -->
+                    <div id="search-suggestions" class="hidden absolute top-full mt-2 w-full bg-surface-container border border-outline-variant/20 rounded-lg shadow-2xl overflow-hidden z-50 flex flex-col max-h-[400px] overflow-y-auto">
+                        <!-- Suggestions will be injected here -->
+                    </div>
                 </div>
                 <button class="p-2 hover:bg-white/5 rounded-full transition-all">
                     <span class="material-symbols-outlined text-primary-container"
@@ -98,9 +102,16 @@
                 </a>
             </nav>
             <div class="p-md mt-auto">
-                <button
-                    class="w-full py-3 bg-primary-container text-black font-label-md text-label-md rounded hover:bg-primary transition-colors">Premium
-                    Access</button>
+                <div id="auth-container">
+                    <button id="auth-btn" onclick="openAuthModal()"
+                        class="w-full py-3 bg-primary-container text-black font-label-md text-label-md rounded hover:bg-primary transition-colors flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined">login</span> Login / Registrati
+                    </button>
+                    <div id="user-info" class="hidden flex flex-col gap-2">
+                        <div class="text-on-surface-variant font-label-md text-center bg-surface-container-high py-2 rounded-lg">Benvenuto, <span id="current-username" class="text-primary-container font-bold"></span></div>
+                        <button onclick="logoutUser()" class="w-full py-2 border border-outline-variant/30 text-on-surface-variant font-label-sm rounded hover:bg-white/5 transition-colors">Logout</button>
+                    </div>
+                </div>
             </div>
         </aside>
         <!-- Main Content Canvas -->
@@ -215,6 +226,32 @@
                                     <p id="detail-review" class="font-body-md text-body-md text-on-surface-variant italic leading-relaxed"></p>
                                 </div>
                             </div>
+                            
+                            <!-- Form Aggiungi Recensione (Solo Admin) -->
+                            <div id="add-review-section" class="hidden mt-6">
+                                <h2 class="font-headline-sm text-headline-sm text-white mb-3 flex items-center gap-2">
+                                    <span class="material-symbols-outlined material-fill-1 text-primary-container">add_comment</span>
+                                    Aggiungi Recensione
+                                </h2>
+                                <div class="glass-panel border border-primary-container/30 rounded-xl p-6 flex flex-col gap-4">
+                                    <div>
+                                        <label class="block font-label-sm text-on-surface-variant mb-1">Autore</label>
+                                        <input id="new-review-author" type="text" placeholder="Es. Cinematic Noir" class="w-full bg-black/50 border border-outline-variant/30 rounded px-4 py-2 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors" />
+                                    </div>
+                                    <div>
+                                        <label class="block font-label-sm text-on-surface-variant mb-1">Voto (0–10)</label>
+                                        <input id="new-review-rating" type="number" min="0" max="10" step="0.1" placeholder="Es. 8.5" class="w-28 bg-black/50 border border-outline-variant/30 rounded px-4 py-2 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors" />
+                                    </div>
+                                    <div>
+                                        <label class="block font-label-sm text-on-surface-variant mb-1">Testo Recensione</label>
+                                        <textarea id="new-review-text" rows="4" placeholder="Scrivi qui la tua recensione..." class="w-full bg-black/50 border border-outline-variant/30 rounded px-4 py-2 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors"></textarea>
+                                    </div>
+                                    <div id="new-review-error" class="hidden bg-red-500/20 text-red-300 font-label-sm p-3 rounded border border-red-500/30"></div>
+                                    <button onclick="addReview()" class="self-start px-6 py-2 bg-primary-container text-black font-label-md rounded hover:bg-primary transition-colors flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px]">save</span> Salva Recensione
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <!-- Trailer (full width below) -->
@@ -261,6 +298,39 @@
         title="Segnala un problema">
         <span class="material-symbols-outlined text-[28px]">support_agent</span>
     </button>
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center">
+        <div id="auth-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"></div>
+        <div class="relative bg-surface-container w-11/12 max-w-md rounded-2xl shadow-2xl p-6 border border-outline-variant/20 z-10">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="auth-modal-title" class="text-headline-sm font-headline-sm text-primary-container">Login</h2>
+                <button id="auth-close" class="text-on-surface-variant hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <div class="flex gap-4 mb-6 border-b border-outline-variant/20 pb-2">
+                <button id="tab-login" onclick="switchAuthTab('login')" class="flex-1 font-label-md text-primary-container border-b-2 border-primary-container pb-1 transition-colors">Login</button>
+                <button id="tab-register" onclick="switchAuthTab('register')" class="flex-1 font-label-md text-on-surface-variant hover:text-white transition-colors pb-1">Registrati</button>
+            </div>
+
+            <form id="auth-form" class="flex flex-col gap-4">
+                <div id="auth-error" class="hidden bg-red-500/20 text-red-300 font-label-sm p-3 rounded border border-red-500/30 text-center"></div>
+                <div>
+                    <label class="block font-label-sm text-on-surface-variant mb-1">Username</label>
+                    <input id="auth-username" required class="w-full bg-black/50 border border-outline-variant/30 rounded px-4 py-3 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors" type="text" placeholder="Es. Mike" />
+                </div>
+                <div>
+                    <label class="block font-label-sm text-on-surface-variant mb-1">Password</label>
+                    <input id="auth-password" required class="w-full bg-black/50 border border-outline-variant/30 rounded px-4 py-3 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors" type="password" placeholder="••••••••" />
+                </div>
+                <button type="submit" id="auth-submit-btn" class="w-full py-3 mt-2 bg-primary-container text-black font-label-md text-label-md rounded hover:bg-primary transition-colors flex justify-center items-center gap-2">
+                    <span class="material-symbols-outlined">login</span> <span id="auth-btn-text">Accedi</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
     <!-- Support Modal -->
     <div id="support-modal" class="fixed inset-0 z-[100] hidden items-center justify-center">
         <div id="support-backdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
@@ -547,25 +617,63 @@
                 .order('created_at', { ascending: false });
 
             if (!error && reviews && reviews.length > 0) {
+                window.currentReviewsData = reviews;
+                const isAdmin = localStorage.getItem('stoike_role') === 'admin';
                 let reviewsHTML = '';
                 reviews.forEach(rev => {
                     reviewsHTML += `
-                        <div class="mb-4 p-4 glass-panel border border-white/10 rounded-lg">
-                            <div class="flex items-center gap-2 mb-2">
+                        <div id="review-card-${rev.id}" class="mb-4 p-4 glass-panel border border-white/10 rounded-lg relative">
+                            ${isAdmin ? `
+                            <button onclick="startEditReview('${rev.id}')" class="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-on-surface-variant hover:text-white" title="Modifica Recensione">
+                                <span class="material-symbols-outlined text-[18px]">edit</span>
+                            </button>
+                            ` : ''}
+                            <div class="flex items-center gap-2 mb-2 pr-10">
                                 <span class="material-symbols-outlined text-primary-container text-[18px]">person</span>
                                 <span class="font-label-md text-white font-bold">${rev.author || 'Utente'}</span>
-                                <span class="ml-auto text-primary-container font-label-sm flex items-center gap-1">
+                                <span class="ml-auto text-primary-container font-label-sm flex items-center gap-1" id="display-rating-${rev.id}">
                                     <span class="material-symbols-outlined text-[14px] material-fill-1">star</span>
-                                    ${rev.rating}/10
+                                    <span>${rev.rating}/10</span>
                                 </span>
                             </div>
-                            <p class="font-body-md text-on-surface-variant">${rev.review_text}</p>
+                            <p id="display-text-${rev.id}" class="font-body-md text-on-surface-variant">${rev.review_text}</p>
+                            
+                            <!-- Modalità Modifica (Nascosta di default) -->
+                            <div id="edit-form-${rev.id}" class="hidden flex-col gap-3 mt-4 border-t border-outline-variant/20 pt-4">
+                                <div>
+                                    <label class="block font-label-sm text-on-surface-variant mb-1">Voto (0-10)</label>
+                                    <input type="number" id="edit-rating-${rev.id}" value="${rev.rating}" min="0" max="10" step="0.1" class="w-24 bg-black/50 border border-outline-variant/30 rounded px-2 py-1 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors">
+                                </div>
+                                <div>
+                                    <label class="block font-label-sm text-on-surface-variant mb-1">Testo Recensione</label>
+                                    <textarea id="edit-text-${rev.id}" class="w-full h-24 bg-black/50 border border-outline-variant/30 rounded px-3 py-2 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors">${rev.review_text}</textarea>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button onclick="saveEditReview('${rev.id}')" class="px-4 py-2 bg-primary-container text-black font-label-sm rounded hover:bg-primary transition-colors flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-[16px]">save</span> Salva
+                                    </button>
+                                    <button onclick="cancelEditReview('${rev.id}')" class="px-4 py-2 border border-outline-variant/30 text-white font-label-sm rounded hover:bg-white/10 transition-colors">Annulla</button>
+                                </div>
+                            </div>
                         </div>
                     `;
                 });
                 reviewEl.innerHTML = reviewsHTML;
             } else {
                 reviewEl.innerHTML = '<p class="font-body-md text-on-surface-variant italic">Nessuna recensione presente per questo film su Stoike.</p>';
+            }
+            
+            // Form aggiunta recensione per admin (sempre visibile se admin)
+            const isAdmin = localStorage.getItem('stoike_role') === 'admin';
+            const addReviewSection = document.getElementById('add-review-section');
+            if (addReviewSection) {
+                if (isAdmin) {
+                    addReviewSection.classList.remove('hidden');
+                    // Salva il movie id per il submit
+                    addReviewSection.dataset.movieId = movie.id;
+                } else {
+                    addReviewSection.classList.add('hidden');
+                }
             }
 
             // Forza lo scroll verso l'alto assicurandosi che avvenga DOPO il rendering della pagina
@@ -624,8 +732,44 @@
             if (moviesGrid) {
                 moviesGrid.innerHTML = '<div class="col-span-full text-center py-12"><span class="opacity-50">Ricerca in corso...</span></div>';
                 moviesGrid.classList.remove('hidden');
+                document.getElementById('search-suggestions').classList.add('hidden'); // Nascondi dropdown
+                
                 const searchResults = await loadMovies(`/search/movie?query=${encodeURIComponent(query)}`);
                 renderMovies(searchResults, moviesGrid);
+            }
+        }
+        
+        async function fetchSuggestions(query) {
+            const suggestionsBox = document.getElementById('search-suggestions');
+            if (!query) {
+                suggestionsBox.classList.add('hidden');
+                return;
+            }
+            
+            const results = await loadMovies(`/search/movie?query=${encodeURIComponent(query)}`);
+            if (results && results.length > 0) {
+                suggestionsBox.innerHTML = '';
+                results.slice(0, 5).forEach(movie => {
+                    const item = document.createElement('div');
+                    item.className = 'flex items-center gap-3 p-3 hover:bg-surface-container-high cursor-pointer transition-colors border-b border-outline-variant/10 last:border-0';
+                    item.innerHTML = `
+                        <img src="${movie.poster_url}" class="w-10 h-14 object-cover rounded shadow-sm" alt="${movie.title}" onerror="this.src='https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover'">
+                        <div class="flex-1 min-w-0">
+                            <div class="font-label-md text-white truncate">${movie.title}</div>
+                            <div class="font-label-sm text-on-surface-variant">${movie.release_year} • <span class="material-symbols-outlined text-[12px] material-fill-1 text-primary-container align-middle">star</span> ${movie.rating}</div>
+                        </div>
+                    `;
+                    item.addEventListener('click', () => {
+                        suggestionsBox.classList.add('hidden');
+                        document.getElementById('search-input').value = '';
+                        showMovieDetail(movie);
+                    });
+                    suggestionsBox.appendChild(item);
+                });
+                suggestionsBox.classList.remove('hidden');
+            } else {
+                suggestionsBox.innerHTML = '<div class="p-4 text-center font-label-md text-on-surface-variant">Nessun risultato</div>';
+                suggestionsBox.classList.remove('hidden');
             }
         }
 
@@ -685,11 +829,36 @@
                 }
             }
 
-            // Configura il campo di ricerca
+            // Configura il campo di ricerca con debounce per auto-suggest
             const searchInput = document.getElementById('search-input');
+            let searchTimeout = null;
+            
             if (searchInput) {
+                searchInput.addEventListener('input', (e) => {
+                    clearTimeout(searchTimeout);
+                    const query = e.target.value.trim();
+                    if (!query) {
+                        document.getElementById('search-suggestions').classList.add('hidden');
+                        return;
+                    }
+
+                    searchTimeout = setTimeout(() => {
+                        fetchSuggestions(query);
+                    }, 1000);
+                });
+
                 searchInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') executeSearch();
+                    if (e.key === 'Enter') {
+                        clearTimeout(searchTimeout);
+                        executeSearch(); // Cerca nella griglia principale
+                    }
+                });
+                
+                // Chiudi dropdown se si clicca fuori
+                document.addEventListener('click', (e) => {
+                    if (!document.getElementById('search-container').contains(e.target)) {
+                        document.getElementById('search-suggestions').classList.add('hidden');
+                    }
                 });
             }
 
@@ -772,7 +941,8 @@
                             
                             let endpoint = '/trending/movie/week';
                             if (text === 'Top Rated') endpoint = '/movie/top_rated';
-                            if (text === 'New Releases') endpoint = '/movie/upcoming';
+                            const today = new Date().toISOString().split('T')[0];
+                            if (text === 'New Releases') endpoint = `/discover/movie?region=IT&with_release_type=2|3&primary_release_date.gte=${today}`;
                             
                             const newMovies = await loadMovies(endpoint);
                             renderMovies(newMovies, currentMoviesGrid);
@@ -847,7 +1017,245 @@
                     closeSupportModal();
                 });
             }
+
+            // Auth Logic
+            checkAuthState();
         });
+
+        // Global Auth Functions
+        let currentAuthMode = 'login';
+        
+        function checkAuthState() {
+            const username = localStorage.getItem('stoike_user');
+            const authBtn = document.getElementById('auth-btn');
+            const userInfo = document.getElementById('user-info');
+            if (username) {
+                if(authBtn) authBtn.classList.add('hidden');
+                if(userInfo) userInfo.classList.remove('hidden');
+                const userSpan = document.getElementById('current-username');
+                if(userSpan) userSpan.innerText = username;
+            } else {
+                if(authBtn) authBtn.classList.remove('hidden');
+                if(userInfo) userInfo.classList.add('hidden');
+            }
+        }
+
+        function logoutUser() {
+            localStorage.removeItem('stoike_user');
+            localStorage.removeItem('stoike_role');
+            checkAuthState();
+        }
+
+        function openAuthModal() {
+            document.getElementById('auth-modal').classList.remove('hidden');
+            document.getElementById('auth-error').classList.add('hidden');
+        }
+
+        function closeAuthModal() {
+            document.getElementById('auth-modal').classList.add('hidden');
+            document.getElementById('auth-form').reset();
+        }
+
+        document.getElementById('auth-close').addEventListener('click', closeAuthModal);
+        document.getElementById('auth-backdrop').addEventListener('click', closeAuthModal);
+
+        function switchAuthTab(mode) {
+            currentAuthMode = mode;
+            const tabLogin = document.getElementById('tab-login');
+            const tabRegister = document.getElementById('tab-register');
+            const title = document.getElementById('auth-modal-title');
+            const btnText = document.getElementById('auth-btn-text');
+            const btnIcon = document.querySelector('#auth-submit-btn .material-symbols-outlined');
+            const errBox = document.getElementById('auth-error');
+            
+            errBox.classList.add('hidden');
+
+            if (mode === 'login') {
+                tabLogin.className = 'flex-1 font-label-md text-primary-container border-b-2 border-primary-container pb-1 transition-colors';
+                tabRegister.className = 'flex-1 font-label-md text-on-surface-variant hover:text-white transition-colors pb-1';
+                title.innerText = 'Login';
+                btnText.innerText = 'Accedi';
+                btnIcon.innerText = 'login';
+            } else {
+                tabRegister.className = 'flex-1 font-label-md text-primary-container border-b-2 border-primary-container pb-1 transition-colors';
+                tabLogin.className = 'flex-1 font-label-md text-on-surface-variant hover:text-white transition-colors pb-1';
+                title.innerText = 'Registrazione';
+                btnText.innerText = 'Registrati';
+                btnIcon.innerText = 'person_add';
+            }
+        }
+
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const u = document.getElementById('auth-username').value.trim();
+            const p = document.getElementById('auth-password').value.trim();
+            const errBox = document.getElementById('auth-error');
+            const submitBtn = document.getElementById('auth-submit-btn');
+            const btnText = document.getElementById('auth-btn-text');
+            
+            const originalText = btnText.innerText;
+            btnText.innerText = 'Attendere...';
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50');
+
+            try {
+                const rpcName = currentAuthMode === 'login' ? 'login_user' : 'register_user';
+                const { data, error } = await supabaseClient.rpc(rpcName, { p_username: u, p_password: p });
+                
+                if (error) throw error;
+                
+                if (data && data.success) {
+                    localStorage.setItem('stoike_user', data.username);
+                    localStorage.setItem('stoike_role', data.role);
+                    closeAuthModal();
+                    checkAuthState();
+                } else {
+                    errBox.innerText = data.message || 'Errore sconosciuto';
+                    errBox.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error(err);
+                errBox.innerText = 'Errore di connessione al server.';
+                errBox.classList.remove('hidden');
+            } finally {
+                btnText.innerText = originalText;
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50');
+            }
+        });
+        // Funzioni Modifica Recensioni (Admin)
+        function startEditReview(id) {
+            document.getElementById(`display-text-${id}`).classList.add('hidden');
+            document.getElementById(`display-rating-${id}`).classList.add('hidden');
+            document.getElementById(`edit-form-${id}`).classList.remove('hidden');
+            document.getElementById(`edit-form-${id}`).classList.add('flex');
+        }
+
+        function cancelEditReview(id) {
+            document.getElementById(`display-text-${id}`).classList.remove('hidden');
+            document.getElementById(`display-rating-${id}`).classList.remove('hidden');
+            document.getElementById(`edit-form-${id}`).classList.add('hidden');
+            document.getElementById(`edit-form-${id}`).classList.remove('flex');
+        }
+
+        async function saveEditReview(id) {
+            const username = localStorage.getItem('stoike_user');
+            if (!username) return alert('Devi essere loggato.');
+            
+            const newText = document.getElementById(`edit-text-${id}`).value.trim();
+            const newRating = document.getElementById(`edit-rating-${id}`).value;
+
+            if (!newText || !newRating) return alert('Compila tutti i campi.');
+
+            try {
+                const { data, error } = await supabaseClient.rpc('update_review', {
+                    p_review_id: id,
+                    p_username: username,
+                    p_new_text: newText,
+                    p_new_rating: parseFloat(newRating)
+                });
+
+                if (error) throw error;
+                if (!data.success) throw new Error(data.message);
+
+                // Aggiorna l'interfaccia localmente senza ricaricare tutto
+                document.getElementById(`display-text-${id}`).innerText = newText;
+                document.getElementById(`display-rating-${id}`).innerHTML = `<span class="material-symbols-outlined text-[14px] material-fill-1">star</span> <span>${parseFloat(newRating).toFixed(1)}/10</span>`;
+                cancelEditReview(id);
+                
+                // Opzionale: mostra un toast di successo
+                console.log('Recensione aggiornata con successo');
+            } catch (err) {
+                alert('Errore: ' + (err.message || 'Impossibile aggiornare la recensione.'));
+            }
+        }
+        async function addReview() {
+            const username = localStorage.getItem('stoike_user');
+            const section = document.getElementById('add-review-section');
+            const movieId = section ? parseInt(section.dataset.movieId) : null;
+            const author = document.getElementById('new-review-author').value.trim();
+            const rating = document.getElementById('new-review-rating').value;
+            const text = document.getElementById('new-review-text').value.trim();
+            const errBox = document.getElementById('new-review-error');
+
+            errBox.classList.add('hidden');
+
+            if (!author || !rating || !text) {
+                errBox.innerText = 'Compila tutti i campi prima di salvare.';
+                errBox.classList.remove('hidden');
+                return;
+            }
+
+            try {
+                const { data, error } = await supabaseClient.rpc('insert_review', {
+                    p_username: username,
+                    p_tmdb_movie_id: movieId,
+                    p_author: author,
+                    p_review_text: text,
+                    p_rating: parseFloat(rating)
+                });
+
+                if (error) throw error;
+                if (!data.success) throw new Error(data.message);
+
+                // Pulisci il form
+                document.getElementById('new-review-author').value = '';
+                document.getElementById('new-review-rating').value = '';
+                document.getElementById('new-review-text').value = '';
+
+                // Ricarica le recensioni del film per mostrare quella appena aggiunta
+                const reviewEl = document.getElementById('detail-review');
+                const { data: reviews, error: reviewErr } = await supabaseClient
+                    .from('reviews')
+                    .select('*')
+                    .eq('tmdb_movie_id', movieId)
+                    .order('created_at', { ascending: false });
+
+                if (!reviewErr && reviews && reviews.length > 0) {
+                    const isAdmin = true;
+                    let reviewsHTML = '';
+                    reviews.forEach(rev => {
+                        reviewsHTML += `
+                            <div id="review-card-${rev.id}" class="mb-4 p-4 glass-panel border border-white/10 rounded-lg relative">
+                                <button onclick="startEditReview('${rev.id}')" class="absolute top-4 right-4 p-2 bg-white/5 hover:bg-white/10 rounded-full transition-colors text-on-surface-variant hover:text-white" title="Modifica Recensione">
+                                    <span class="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+                                <div class="flex items-center gap-2 mb-2 pr-10">
+                                    <span class="material-symbols-outlined text-primary-container text-[18px]">person</span>
+                                    <span class="font-label-md text-white font-bold">${rev.author || 'Utente'}</span>
+                                    <span class="ml-auto text-primary-container font-label-sm flex items-center gap-1" id="display-rating-${rev.id}">
+                                        <span class="material-symbols-outlined text-[14px] material-fill-1">star</span>
+                                        <span>${rev.rating}/10</span>
+                                    </span>
+                                </div>
+                                <p id="display-text-${rev.id}" class="font-body-md text-on-surface-variant">${rev.review_text}</p>
+                                <div id="edit-form-${rev.id}" class="hidden flex-col gap-3 mt-4 border-t border-outline-variant/20 pt-4">
+                                    <div>
+                                        <label class="block font-label-sm text-on-surface-variant mb-1">Voto (0-10)</label>
+                                        <input type="number" id="edit-rating-${rev.id}" value="${rev.rating}" min="0" max="10" step="0.1" class="w-24 bg-black/50 border border-outline-variant/30 rounded px-2 py-1 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors">
+                                    </div>
+                                    <div>
+                                        <label class="block font-label-sm text-on-surface-variant mb-1">Testo Recensione</label>
+                                        <textarea id="edit-text-${rev.id}" class="w-full h-24 bg-black/50 border border-outline-variant/30 rounded px-3 py-2 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors">${rev.review_text}</textarea>
+                                    </div>
+                                    <div class="flex gap-2">
+                                        <button onclick="saveEditReview('${rev.id}')" class="px-4 py-2 bg-primary-container text-black font-label-sm rounded hover:bg-primary transition-colors flex items-center gap-1">
+                                            <span class="material-symbols-outlined text-[16px]">save</span> Salva
+                                        </button>
+                                        <button onclick="cancelEditReview('${rev.id}')" class="px-4 py-2 border border-outline-variant/30 text-white font-label-sm rounded hover:bg-white/10 transition-colors">Annulla</button>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    reviewEl.innerHTML = reviewsHTML;
+                }
+
+            } catch (err) {
+                errBox.innerText = 'Errore: ' + (err.message || 'Impossibile salvare la recensione.');
+                errBox.classList.remove('hidden');
+            }
+        }
     </script>
 </body>
 
