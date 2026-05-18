@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     tmdb_movie_id INT NOT NULL,  -- L'ID univoco del film fornito da TMDb
     author TEXT NOT NULL,
     review_text TEXT NOT NULL,
-    rating NUMERIC(2,1) CHECK (rating >= 0 AND rating <= 5),
+    rating NUMERIC(3,1) CHECK (rating >= 0 AND rating <= 10),
     created_at TIMESTAMPTZ DEFAULT now()
 );
 

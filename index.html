@@ -40,11 +40,11 @@
             </div>
             <div class="flex items-center gap-sm">
                 <div class="relative hidden md:block">
-                    <input
+                    <input id="search-input"
                         class="bg-black border-b border-outline-variant focus:border-primary-container focus:ring-0 text-on-background px-3 py-1 w-48 transition-colors"
                         placeholder="Search..." type="text" />
                     <span
-                        class="material-symbols-outlined absolute right-2 top-1 text-on-surface-variant material-fill-0">search</span>
+                        class="material-symbols-outlined absolute right-2 top-1 text-on-surface-variant material-fill-0 cursor-pointer" onclick="executeSearch()">search</span>
                 </div>
                 <button class="p-2 hover:bg-white/5 rounded-full transition-all">
                     <span class="material-symbols-outlined text-primary-container"
@@ -167,7 +167,7 @@
                             <div class="flex items-center gap-2 mb-8">
                                 <span class="material-symbols-outlined text-primary-container material-fill-1 text-[28px]">star</span>
                                 <span id="detail-rating" class="text-primary-container font-headline-sm text-headline-sm"></span>
-                                <span class="text-on-surface-variant font-label-md text-label-md">/ 5</span>
+                                <span class="text-on-surface-variant font-label-md text-label-md">/ 10</span>
                             </div>
                             <!-- Synopsis -->
                             <div id="detail-synopsis-container" class="hidden mb-6">
@@ -323,15 +323,14 @@
         async function loadMovies(endpoint = '/trending/movie/week') {
             const data = await fetchTMDB(endpoint);
             if (data && data.results) {
-                // Mappa i risultati TMDb per uniformarli
                 return data.results.map(m => ({
                     id: m.id,
                     title: m.title,
                     genre: m.genre_ids ? m.genre_ids.map(id => tmdbGenres[id]).join(', ') : '',
-                    poster_url: m.poster_path ? `${TMDB_IMAGE_BASE}w500${m.poster_path}` : '',
-                    backdrop_url: m.backdrop_path ? `${TMDB_IMAGE_BASE}original${m.backdrop_path}` : '',
                     rating: m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
-                    release_year: m.release_date ? m.release_date.substring(0, 4) : '',
+                    release_year: m.release_date ? m.release_date.substring(0, 4) : 'N/A',
+                    poster_url: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover',
+                    backdrop_url: m.backdrop_path ? `https://image.tmdb.org/t/p/w1280${m.backdrop_path}` : 'https://via.placeholder.com/1280x720/131313/FFFFFF?text=No+Backdrop',
                     synopsis: m.overview || ''
                 }));
             }
@@ -413,7 +412,10 @@
             return videoId ? `https://www.youtube.com/embed/${videoId}` : null;
         }
 
+        let currentMovieId = null;
+
         async function showMovieDetail(movie) {
+            currentMovieId = movie.id;
             const heroSection = document.getElementById('hero-section');
             const genresView = document.getElementById('genres-view');
             const sectionTitle = document.getElementById('section-title');
@@ -444,6 +446,17 @@
             document.getElementById('detail-year').innerText = movie.release_year || '';
             document.getElementById('detail-rating').innerText = movie.rating || 'N/A';
 
+            const trailerContainer = document.getElementById('detail-trailer-container');
+            let trailerIframe = document.getElementById('detail-trailer');
+            
+            // Distruggi fisicamente l'iframe per forzare lo stop dell'audio in tutti i browser
+            const newIframe = trailerIframe.cloneNode();
+            newIframe.removeAttribute('src');
+            trailerIframe.parentNode.replaceChild(newIframe, trailerIframe);
+            trailerIframe = newIframe;
+            
+            trailerContainer.classList.add('hidden');
+
             // Fetch Additional Info da TMDb (Credits, Videos, Similar)
             const [credits, videos, similar] = await Promise.all([
                 fetchTMDB(`/movie/${movie.id}/credits`),
@@ -451,9 +464,9 @@
                 fetchTMDB(`/movie/${movie.id}/similar`)
             ]);
 
-            const trailerContainer = document.getElementById('detail-trailer-container');
-            const trailerIframe = document.getElementById('detail-trailer');
-            
+            // Se l'utente ha cambiato film o è tornato indietro durante il caricamento, abortiamo
+            if (currentMovieId !== movie.id) return;
+
             let trailerKey = null;
             if (videos && videos.results) {
                 const trailer = videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube');
@@ -461,11 +474,8 @@
             }
 
             if (trailerKey) {
-                trailerIframe.src = `https://www.youtube.com/embed/${trailerKey}`;
+                trailerIframe.src = `https://www.youtube.com/embed/${trailerKey}?autoplay=0`;
                 trailerContainer.classList.remove('hidden');
-            } else {
-                trailerIframe.src = '';
-                trailerContainer.classList.add('hidden');
             }
 
             const synopsisContainer = document.getElementById('detail-synopsis-container');
@@ -546,7 +556,7 @@
                                 <span class="font-label-md text-white font-bold">${rev.author || 'Utente'}</span>
                                 <span class="ml-auto text-primary-container font-label-sm flex items-center gap-1">
                                     <span class="material-symbols-outlined text-[14px] material-fill-1">star</span>
-                                    ${rev.rating}/5
+                                    ${rev.rating}/10
                                 </span>
                             </div>
                             <p class="font-body-md text-on-surface-variant">${rev.review_text}</p>
@@ -566,6 +576,7 @@
         }
 
         function hideMovieDetail() {
+            currentMovieId = null;
             const heroSection = document.getElementById('hero-section');
             const sectionTitle = document.getElementById('section-title');
             const movieDetail = document.getElementById('movie-detail');
@@ -586,8 +597,36 @@
             document.getElementById('movies-grid').classList.remove('hidden');
             if (heroSection) heroSection.classList.remove('hidden');
             if (sectionTitle) sectionTitle.classList.remove('hidden');
+        }
 
-            document.getElementById('detail-trailer').src = '';
+        async function executeSearch() {
+            const input = document.getElementById('search-input');
+            const query = input ? input.value.trim() : '';
+            if (!query) return;
+
+            const sectionTitle = document.getElementById('section-title');
+            const moviesGrid = document.getElementById('movies-grid');
+            const heroSection = document.getElementById('hero-section');
+            const genresView = document.getElementById('genres-view');
+            const movieDetail = document.getElementById('movie-detail');
+
+            if (movieDetail && !movieDetail.classList.contains('hidden')) {
+                hideMovieDetail();
+            }
+
+            if (heroSection) heroSection.classList.add('hidden');
+            if (genresView) genresView.classList.add('hidden');
+            if (sectionTitle) {
+                sectionTitle.innerText = `Risultati per: "${query}"`;
+                sectionTitle.classList.remove('hidden');
+            }
+
+            if (moviesGrid) {
+                moviesGrid.innerHTML = '<div class="col-span-full text-center py-12"><span class="opacity-50">Ricerca in corso...</span></div>';
+                moviesGrid.classList.remove('hidden');
+                const searchResults = await loadMovies(`/search/movie?query=${encodeURIComponent(query)}`);
+                renderMovies(searchResults, moviesGrid);
+            }
         }
 
         document.addEventListener('DOMContentLoaded', async () => {
@@ -644,6 +683,14 @@
                         });
                     });
                 }
+            }
+
+            // Configura il campo di ricerca
+            const searchInput = document.getElementById('search-input');
+            if (searchInput) {
+                searchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') executeSearch();
+                });
             }
 
             // Back button
