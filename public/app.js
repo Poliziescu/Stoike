@@ -101,14 +101,10 @@ async function showMovieDetail(movie) {
     const genresView = document.getElementById('genres-view');
     const sectionTitle = document.getElementById('section-title');
     const movieDetail = document.getElementById('movie-detail');
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('main-content');
     if (heroSection) heroSection.classList.add('hidden');
     if (genresView) genresView.classList.add('hidden');
     if (sectionTitle) sectionTitle.classList.add('hidden');
     document.getElementById('movies-grid').classList.add('hidden');
-    if (sidebar) { sidebar.classList.remove('md:flex'); sidebar.classList.add('hidden'); }
-    if (mainContent) { mainContent.classList.remove('md:ml-64'); }
     movieDetail.classList.remove('hidden');
     document.getElementById('detail-poster').src = movie.poster_url || '';
     document.getElementById('detail-poster').alt = movie.title;
@@ -151,7 +147,31 @@ async function showMovieDetail(movie) {
     const similarContainer = document.getElementById('detail-similar-container');
     const similarEl = document.getElementById('detail-similar');
     if (similar && similar.results && similar.results.length > 0) {
-        similarEl.innerText = similar.results.slice(0, 5).map(s => s.title).join(' • ');
+        similarEl.innerHTML = '';
+        similar.results.slice(0, 5).forEach(s => {
+            const btn = document.createElement('button');
+            btn.className = 'px-3.5 py-2 bg-white/5 hover:bg-primary-container hover:text-black rounded-full border border-white/10 text-on-surface-variant font-label-md transition-all duration-300 transform hover:scale-105 shadow-sm text-sm font-medium';
+            btn.innerText = s.title;
+            btn.addEventListener('click', () => {
+                const mappedMovie = {
+                    id: s.id,
+                    title: s.title,
+                    genre: s.genre_ids ? s.genre_ids.map(id => tmdbGenres[id]).filter(Boolean).join(', ') : '',
+                    rating: s.vote_average ? s.vote_average.toFixed(1) : 'N/A',
+                    release_year: s.release_date ? s.release_date.substring(0, 4) : 'N/A',
+                    poster_url: s.poster_path ? `https://image.tmdb.org/t/p/w500${s.poster_path}` : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover',
+                    backdrop_url: s.backdrop_path ? `https://image.tmdb.org/t/p/w1280${s.backdrop_path}` : 'https://via.placeholder.com/1280x720/131313/FFFFFF?text=No+Backdrop',
+                    synopsis: s.overview || ''
+                };
+                showMovieDetail(mappedMovie);
+                // Scroll main-content smoothly to top to view details
+                const mainContentCanvas = document.getElementById('main-content');
+                if (mainContentCanvas) {
+                    mainContentCanvas.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            });
+            similarEl.appendChild(btn);
+        });
         similarContainer.classList.remove('hidden');
     } else { similarContainer.classList.add('hidden'); }
 
@@ -189,11 +209,7 @@ function hideMovieDetail() {
     const heroSection = document.getElementById('hero-section');
     const sectionTitle = document.getElementById('section-title');
     const movieDetail = document.getElementById('movie-detail');
-    const sidebar = document.getElementById('sidebar');
-    const mainContent = document.getElementById('main-content');
     movieDetail.classList.add('hidden');
-    if (sidebar) { sidebar.classList.remove('hidden'); sidebar.classList.add('hidden', 'md:flex'); }
-    if (mainContent) { mainContent.classList.add('md:ml-64'); }
     document.getElementById('movies-grid').classList.remove('hidden');
     if (heroSection) heroSection.classList.remove('hidden');
     if (sectionTitle) sectionTitle.classList.remove('hidden');
@@ -241,11 +257,110 @@ async function fetchSuggestions(query) {
     }
 }
 
+// =========================================
+// NAVIGAZIONE SIDEBAR DRAWER & RESET LOGO
+// =========================================
+let closeTimeout = null;
+
+function openDrawer() {
+    clearTimeout(closeTimeout);
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) {
+        sidebar.classList.remove('-translate-x-full');
+        sidebar.classList.add('translate-x-0');
+    }
+    if (overlay) {
+        overlay.classList.remove('hidden');
+        setTimeout(() => overlay.classList.add('opacity-100'), 10);
+    }
+}
+
+function closeDrawer() {
+    clearTimeout(closeTimeout);
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebar-overlay');
+    if (sidebar) {
+        sidebar.classList.remove('translate-x-0');
+        sidebar.classList.add('-translate-x-full');
+    }
+    if (overlay) {
+        overlay.classList.remove('opacity-100');
+        setTimeout(() => overlay.classList.add('hidden'), 300);
+    }
+}
+
+async function goToHomepage() {
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) searchInput.value = '';
+    const suggestionsBox = document.getElementById('search-suggestions');
+    if (suggestionsBox) suggestionsBox.classList.add('hidden');
+    
+    hideMovieDetail();
+    
+    // Trova e simula il click sulla prima categoria (Trending Now)
+    const links = document.querySelectorAll('a[href="#"]');
+    for (let link of links) {
+        let text = link.innerText.trim();
+        const sp = link.querySelector('span:not(.material-symbols-outlined)');
+        if (sp) text = sp.innerText.trim();
+        if (text === 'Home' || text === 'Movies' || text === 'Trending' || text === 'Trending Now') {
+            link.click();
+            break;
+        }
+    }
+}
+
 // DOMContentLoaded
 document.addEventListener('DOMContentLoaded', async () => {
     const sectionTitle = document.getElementById('section-title');
     const moviesGrid = document.getElementById('movies-grid');
     const links = document.querySelectorAll('a[href="#"]');
+    
+    // Logo Click Reset
+    const logoEl = document.getElementById('site-logo');
+    if (logoEl) {
+        logoEl.addEventListener('click', goToHomepage);
+    }
+
+    // Gestione Sensori ed Eventi Sidebar Drawer
+    const sidebar = document.getElementById('sidebar');
+    const trigger = document.getElementById('sidebar-trigger');
+    const overlay = document.getElementById('sidebar-overlay');
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebarClose = document.getElementById('sidebar-close');
+
+    if (trigger) {
+        trigger.addEventListener('mouseenter', openDrawer);
+        trigger.addEventListener('mouseleave', () => {
+            closeTimeout = setTimeout(closeDrawer, 800);
+        });
+    }
+    if (menuToggle) {
+        menuToggle.addEventListener('mouseenter', openDrawer);
+        menuToggle.addEventListener('mouseleave', () => {
+            closeTimeout = setTimeout(closeDrawer, 800);
+        });
+        menuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (sidebar && sidebar.classList.contains('translate-x-0')) {
+                closeDrawer();
+            } else {
+                openDrawer();
+            }
+        });
+    }
+    if (sidebarClose) sidebarClose.addEventListener('click', closeDrawer);
+    if (overlay) overlay.addEventListener('click', closeDrawer);
+    if (sidebar) {
+        sidebar.addEventListener('mouseleave', () => {
+            closeTimeout = setTimeout(closeDrawer, 800);
+        });
+        sidebar.addEventListener('mouseenter', () => {
+            clearTimeout(closeTimeout);
+        });
+    }
+
     if (moviesGrid) {
         moviesGrid.innerHTML = '<div class="col-span-full text-center text-on-surface-variant py-12">Caricamento in corso...</div>';
         await loadTMDBGenres();
@@ -270,17 +385,102 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (si) { si.addEventListener('input', e=>{clearTimeout(st);const q=e.target.value.trim();if(!q){document.getElementById('search-suggestions').classList.add('hidden');return;}st=setTimeout(()=>fetchSuggestions(q),1000);}); si.addEventListener('keydown', e=>{if(e.key==='Enter'){clearTimeout(st);executeSearch();}}); document.addEventListener('click', e=>{if(!document.getElementById('search-container').contains(e.target))document.getElementById('search-suggestions').classList.add('hidden');}); }
     const bb = document.getElementById('back-to-grid'); if(bb) bb.addEventListener('click', hideMovieDetail);
     const tA='text-primary-container font-bold border-b-2 border-primary-container pb-1 opacity-80 scale-95'.split(' '),tI='text-on-surface-variant'.split(' '),sA='bg-primary-container/10 text-primary-container border-r-4 border-primary-container'.split(' '),sI='text-on-surface-variant'.split(' '),bA='text-primary-container drop-shadow-[0_0_8px_rgba(255,215,0,0.4)]'.split(' '),bI='text-on-surface-variant opacity-60'.split(' ');
-    links.forEach(link=>{link.addEventListener('click',async e=>{e.preventDefault();const md=document.getElementById('movie-detail');if(md&&!md.classList.contains('hidden'))hideMovieDetail();let t=link.innerText.trim();const sp=link.querySelector('span:not(.material-symbols-outlined)');if(sp)t=sp.innerText.trim();if(t==='Home'||t==='Movies'||t==='Trending')t='Trending Now';const cH=document.getElementById('hero-section'),cG2=document.getElementById('genres-view'),cGrid=document.getElementById('movies-grid');
+    
+    links.forEach(link=>{link.addEventListener('click',async e=>{e.preventDefault();
+    closeDrawer(); // Chiude il drawer all'attivazione del link
+    const md=document.getElementById('movie-detail');if(md&&!md.classList.contains('hidden'))hideMovieDetail();let t=link.innerText.trim();const sp=link.querySelector('span:not(.material-symbols-outlined)');if(sp)t=sp.innerText.trim();if(t==='Home'||t==='Movies'||t==='Trending')t='Trending Now';const cH=document.getElementById('hero-section'),cG2=document.getElementById('genres-view'),cGrid=document.getElementById('movies-grid');
     if(t==='Trending Now'){if(cG2)cG2.classList.add('hidden');if(cH)cH.classList.remove('hidden');if(sectionTitle)sectionTitle.innerText=t;if(cGrid){cGrid.innerHTML='<div class="col-span-full text-center py-12"><span class="opacity-50">Caricamento...</span></div>';cGrid.classList.remove('hidden');const nm=await loadMovies('/trending/movie/week');if(nm.length>0)renderHeroMovie(nm[0]);renderMovies(nm,cGrid);}}
     else if(t==='Genres'){if(cH)cH.classList.add('hidden');if(cG2)cG2.classList.remove('hidden');if(cGrid){cGrid.classList.remove('hidden');Array.from(cGrid.querySelectorAll('.movie-card')).forEach(c=>c.classList.remove('hidden'));}if(sectionTitle)sectionTitle.innerText='Genres';}
     else{if(cG2)cG2.classList.add('hidden');if(cH)cH.classList.add('hidden');if(sectionTitle)sectionTitle.innerText=t;if(cGrid){cGrid.innerHTML='<div class="col-span-full text-center py-12"><span class="opacity-50">Caricamento...</span></div>';cGrid.classList.remove('hidden');let ep='/trending/movie/week';if(t==='Top Rated')ep='/movie/top_rated';if(t==='New Releases')ep=`/discover/movie?region=IT&with_release_type=2|3&primary_release_date.gte=${new Date().toISOString().split('T')[0]}`;renderMovies(await loadMovies(ep),cGrid);}}
     const nav=link.parentElement,isT=nav.classList.contains('hidden')&&nav.classList.contains('md:flex'),isS=nav.tagName==='NAV'&&nav.classList.contains('flex-col'),isB=nav.tagName==='NAV'&&nav.classList.contains('bottom-0');
     if(isT){nav.querySelectorAll('a').forEach(a=>{a.classList.remove(...tA);a.classList.add(...tI);});link.classList.remove(...tI);link.classList.add(...tA);}else if(isS){nav.querySelectorAll('a').forEach(a=>{a.classList.remove(...sA);a.classList.add(...sI);});link.classList.remove(...sI);link.classList.add(...sA);}else if(isB){nav.querySelectorAll('a').forEach(a=>{a.classList.remove(...bA);a.classList.add(...bI);});link.classList.remove(...bI);link.classList.add(...bA);}});});
-    // Support
+    
+    // Support Modal Integration (GitHub Issues API Bug Reporter)
     const sFab=document.getElementById('support-fab'),sModal=document.getElementById('support-modal'),sClose=document.getElementById('support-close'),sBk=document.getElementById('support-backdrop'),sForm=document.getElementById('support-form');
-    const openS=()=>{sModal.classList.remove('hidden');sModal.classList.add('flex');};const closeS=()=>{sModal.classList.add('hidden');sModal.classList.remove('flex');};
+    const openS=()=>{
+        if(sModal) {
+            sModal.classList.remove('hidden');
+            sModal.classList.add('flex');
+            const statusBox = document.getElementById('support-status');
+            if (statusBox) statusBox.classList.add('hidden');
+        }
+    };
+    const closeS=()=>{
+        if(sModal) {
+            sModal.classList.add('hidden');
+            sModal.classList.remove('flex');
+        }
+    };
     if(sFab)sFab.addEventListener('click',openS);if(sClose)sClose.addEventListener('click',closeS);if(sBk)sBk.addEventListener('click',closeS);
-    if(sForm)sForm.addEventListener('submit',e=>{e.preventDefault();const t2=document.getElementById('support-title').value.trim(),m=document.getElementById('support-message').value.trim();window.location.href=`mailto:support@stoike.cinema?subject=${encodeURIComponent('[Stoike] '+t2)}&body=${encodeURIComponent(m)}`;sForm.reset();closeS();});
+    
+    if(sForm) {
+        sForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const title = document.getElementById('support-title').value.trim();
+            const email = document.getElementById('support-email').value.trim();
+            const description = document.getElementById('support-message').value.trim();
+            const submitBtn = document.getElementById('support-submit');
+            const statusBox = document.getElementById('support-status');
+            
+            if (!title || !description) return;
+            
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px] align-middle mr-2">sync</span>Invio in corso...';
+            }
+            if (statusBox) {
+                statusBox.className = 'px-4 py-3 rounded-lg border font-body-md text-body-md transition-all duration-300 bg-yellow-500/10 border-yellow-500/30 text-yellow-200';
+                statusBox.innerHTML = 'Connessione al server e creazione del ticket su GitHub...';
+                statusBox.classList.remove('hidden');
+            }
+            
+            try {
+                const response = await fetch('/api/report-bug', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: title,
+                        description: description,
+                        email: email || '',
+                        currentPage: window.location.href,
+                        browserInfo: navigator.userAgent
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.success) {
+                    if (statusBox) {
+                        statusBox.className = 'px-4 py-3 rounded-lg border font-body-md text-body-md transition-all duration-300 bg-green-500/10 border-green-500/30 text-green-200';
+                        statusBox.innerHTML = `<strong>Successo!</strong> Segnalazione salvata. Grazie per aver migliorato Stoike!`;
+                    }
+                    sForm.reset();
+                    setTimeout(() => {
+                        closeS();
+                        if (statusBox) statusBox.classList.add('hidden');
+                    }, 2000);
+                } else {
+                    if (statusBox) {
+                        statusBox.className = 'px-4 py-3 rounded-lg border font-body-md text-body-md transition-all duration-300 bg-red-500/10 border-red-500/30 text-red-200';
+                        statusBox.innerHTML = `<strong>Errore:</strong> ${data.message || 'Impossibile creare la issue.'}`;
+                    }
+                }
+            } catch (err) {
+                if (statusBox) {
+                    statusBox.className = 'px-4 py-3 rounded-lg border font-body-md text-body-md transition-all duration-300 bg-red-500/10 border-red-500/30 text-red-200';
+                    statusBox.innerHTML = '<strong>Errore di connessione:</strong> Impossibile raggiungere il server.';
+                }
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = '<span class="material-symbols-outlined text-[20px] align-middle mr-2">send</span>Invia segnalazione';
+                }
+            }
+        });
+    }
+
     checkAuthState();
 });
 

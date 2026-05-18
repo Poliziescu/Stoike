@@ -24,8 +24,13 @@
     <nav
         class="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-outline-variant/10 text-primary-container">
         <div class="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-full mx-auto">
-            <div class="font-display-lg-mobile text-display-lg-mobile text-primary-container tracking-tight">
-                Stoike
+            <div class="flex items-center gap-4">
+                <button id="menu-toggle" class="p-2 hover:bg-white/5 rounded-full transition-all text-primary-container flex items-center justify-center">
+                    <span class="material-symbols-outlined text-[28px]">menu</span>
+                </button>
+                <div id="site-logo" class="font-display-lg-mobile text-display-lg-mobile text-primary-container tracking-tight cursor-pointer hover:opacity-80 transition-opacity">
+                    Stoike
+                </div>
             </div>
             <div class="hidden md:flex items-center gap-md">
                 <a class="text-primary-container font-bold border-b-2 border-primary-container pb-1 hover:bg-white/5 transition-all duration-300 opacity-80 scale-95 transition-transform font-headline-sm text-headline-sm"
@@ -63,14 +68,23 @@
             </div>
         </div>
     </nav>
+    <!-- Sidebar Edge Hover Trigger & Blur Backdrop Overlay -->
+    <div id="sidebar-trigger" class="fixed left-0 top-0 bottom-0 w-6 z-[80] bg-transparent"></div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[90] hidden opacity-0 transition-all duration-300"></div>
+
     <!-- Main Content Layout -->
     <div class="flex pt-20 h-screen">
-        <!-- SideNavBar -->
+        <!-- SideNavBar Drawer -->
         <aside id="sidebar"
-            class="hidden md:flex flex-col fixed left-0 top-20 bottom-0 py-md w-64 border-r border-outline-variant/10 bg-background text-primary-container font-body-md text-body-md">
-            <div class="px-md mb-lg">
-                <div class="font-headline-sm text-primary-container mb-1">Catalog</div>
-                <div class="text-on-surface-variant font-label-sm text-label-sm">Browse by Category</div>
+            class="flex flex-col fixed left-0 top-0 bottom-0 z-[100] w-64 border-r border-outline-variant/10 bg-background/95 backdrop-blur-xl text-primary-container font-body-md text-body-md -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl py-6">
+            <div class="px-md mb-lg flex justify-between items-center">
+                <div>
+                    <div class="font-headline-sm text-primary-container mb-1">Catalog</div>
+                    <div class="text-on-surface-variant font-label-sm text-label-sm">Browse by Category</div>
+                </div>
+                <button id="sidebar-close" class="p-2 hover:bg-white/5 rounded-full text-on-surface-variant hover:text-white transition-all flex items-center justify-center">
+                    <span class="material-symbols-outlined text-[24px]">chevron_left</span>
+                </button>
             </div>
             <nav class="flex-1 flex flex-col gap-2 px-sm">
                 <a class="flex items-center gap-3 px-4 py-3 rounded-lg bg-primary-container/10 text-primary-container border-r-4 border-primary-container hover:bg-surface-container-highest"
@@ -113,7 +127,7 @@
             </div>
         </aside>
         <!-- Main Content Canvas -->
-        <main id="main-content" class="flex-1 md:ml-64 p-margin-mobile md:p-margin-desktop overflow-y-auto">
+        <main id="main-content" class="flex-1 p-margin-mobile md:p-margin-desktop overflow-y-auto">
             <!-- Hero Section -->
             <section id="hero-section"
                 class="relative w-full aspect-[21/9] rounded-xl overflow-hidden mb-lg glass-panel cursor-pointer hover:ring-2 hover:ring-primary-container transition-all">
@@ -211,7 +225,7 @@
                                         <span class="material-symbols-outlined text-primary-container text-[20px]">movie</span>
                                         Titoli Simili Suggeriti
                                     </h2>
-                                    <p id="detail-similar" class="font-body-md text-body-md text-on-surface-variant leading-relaxed"></p>
+                                    <div id="detail-similar" class="flex flex-wrap gap-2.5 mt-2"></div>
                                 </div>
                             </div>
                             <!-- Review -->
@@ -346,8 +360,14 @@
             <form id="support-form" class="flex flex-col gap-4">
                 <input id="support-title" type="text" required placeholder="Titolo del problema (breve e chiaro)"
                     class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md" />
+                <input id="support-email" type="email" placeholder="La tua email per aggiornamenti (opzionale)"
+                    class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md" />
                 <textarea id="support-message" required rows="5" placeholder="Descrivi il problema nel dettaglio..."
                     class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md resize-none"></textarea>
+                
+                <!-- Box Stato Segnalazione (Alert) -->
+                <div id="support-status" class="hidden px-4 py-3 rounded-lg border font-body-md text-body-md transition-all duration-300"></div>
+
                 <button type="submit" id="support-submit"
                     class="px-6 py-3 bg-primary-container text-black font-label-md text-label-md rounded-lg hover:bg-primary-fixed-dim transition-colors flex items-center justify-center gap-2">
                     <span class="material-symbols-outlined text-[20px]">send</span>
