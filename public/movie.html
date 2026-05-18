@@ -268,6 +268,53 @@
                         <iframe id="detail-trailer" class="w-full h-full" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
                     </div>
                 </div>
+
+                <!-- Mini Forum Section -->
+                <div id="detail-forum-container" class="mt-12 mb-12">
+                    <h2 class="font-headline-sm text-headline-sm text-white mb-2 flex items-center gap-2">
+                        <span class="material-symbols-outlined material-fill-1 text-primary-container">forum</span>
+                        <span>Stoike Forum & Dibattiti</span>
+                    </h2>
+                    <p class="text-on-surface-variant font-label-sm text-label-sm mb-6">Discuti, esprimi le tue opinioni o rispondi ad altri utenti su questo film!</p>
+                    
+                    <!-- Forum Posts List -->
+                    <div id="forum-posts" class="flex flex-col gap-4 mb-6">
+                        <!-- Posts and threaded replies will be dynamically loaded here -->
+                    </div>
+
+                    <!-- Write new thread form -->
+                    <div id="forum-new-post-container" class="glass-panel border border-outline-variant/20 rounded-xl p-6">
+                        <div id="forum-not-logged" class="hidden text-center py-4">
+                            <p class="text-on-surface-variant font-body-md mb-3">Devi effettuare l'accesso per partecipare al forum.</p>
+                            <button onclick="openAuthModal()" class="px-6 py-2 bg-primary-container text-black font-label-md rounded hover:bg-primary transition-colors">
+                                Accedi / Registrati
+                            </button>
+                        </div>
+                        <div id="forum-write-form" class="hidden flex flex-col gap-4">
+                            <div class="flex items-center justify-between">
+                                <h3 class="font-label-md text-white font-bold" id="forum-form-title">Scrivi un commento nel forum</h3>
+                                <span class="text-xs text-on-surface-variant italic">Puoi usare @ per taggare altri partecipanti o cliccare su "Tagga"</span>
+                            </div>
+                            <div class="relative">
+                                <textarea id="forum-post-text" rows="3" placeholder="Scrivi il tuo messaggio..." class="w-full bg-black/50 border border-outline-variant/30 rounded-lg px-4 py-3 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors resize-none font-body-md text-body-md"></textarea>
+                                
+                                <!-- Mentions autocomplete dropdown -->
+                                <div id="mention-dropdown" class="hidden absolute left-0 bottom-full mb-1 w-64 bg-surface-container border border-outline-variant/20 rounded-lg shadow-2xl overflow-hidden z-50 flex flex-col">
+                                    <!-- Dynamic mention suggestions -->
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-primary-container font-label-sm font-bold" id="forum-reply-indicator"></span>
+                                <div class="flex gap-2">
+                                    <button id="cancel-forum-reply" onclick="cancelForumReply()" class="hidden px-4 py-2 border border-outline-variant/30 text-white font-label-sm rounded hover:bg-white/10 transition-colors">Annulla</button>
+                                    <button onclick="submitForumPost()" class="px-6 py-2 bg-primary-container text-black font-label-md rounded hover:bg-primary transition-colors flex items-center gap-2">
+                                        <span class="material-symbols-outlined text-[18px]">send</span> Invia messaggio
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -375,6 +422,35 @@
                     Annulla
                 </button>
                 <button id="delete-confirm-btn" class="px-5 py-2.5 bg-error-container text-white font-label-md rounded hover:bg-red-600 transition-colors flex items-center gap-2">
+                    <span class="material-symbols-outlined text-[18px]">delete</span> Elimina
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Forum Post Confirmation Modal -->
+    <div id="delete-forum-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center">
+        <div id="delete-forum-backdrop" class="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"></div>
+        <div class="relative bg-surface-container w-11/12 max-w-md rounded-2xl shadow-2xl p-6 border border-outline-variant/20 z-10">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-headline-sm font-headline-sm text-primary-container flex items-center gap-2">
+                    <span class="material-symbols-outlined text-error">warning</span>
+                    Elimina Messaggio
+                </h2>
+                <button id="delete-forum-close" class="text-on-surface-variant hover:text-white transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="mb-6">
+                <p class="text-on-surface-variant font-body-md text-body-md leading-relaxed">
+                    Sei sicuro di voler eliminare definitivamente questo messaggio dal forum? Questa operazione non può essere annullata.
+                </p>
+            </div>
+            <div class="flex gap-4 justify-end">
+                <button id="delete-forum-cancel-btn" class="px-5 py-2.5 border border-outline-variant/30 text-on-surface-variant font-label-md rounded hover:bg-white/5 transition-colors">
+                    Annulla
+                </button>
+                <button id="delete-forum-confirm-btn" class="px-5 py-2.5 bg-error-container text-white font-label-md rounded hover:bg-red-600 transition-colors flex items-center gap-2">
                     <span class="material-symbols-outlined text-[18px]">delete</span> Elimina
                 </button>
             </div>

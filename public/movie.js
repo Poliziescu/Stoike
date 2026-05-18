@@ -56,6 +56,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (deleteConfirm) {
         deleteConfirm.addEventListener('click', executeDeleteReview);
     }
+
+    // Setup custom delete forum post modal event handlers
+    const deleteForumClose = document.getElementById('delete-forum-close');
+    const deleteForumCancel = document.getElementById('delete-forum-cancel-btn');
+    const deleteForumBackdrop = document.getElementById('delete-forum-backdrop');
+    if (deleteForumClose) deleteForumClose.addEventListener('click', closeDeleteForumModal);
+    if (deleteForumCancel) deleteForumCancel.addEventListener('click', closeDeleteForumModal);
+    if (deleteForumBackdrop) deleteForumBackdrop.addEventListener('click', closeDeleteForumModal);
+
+    const deleteForumConfirm = document.getElementById('delete-forum-confirm-btn');
+    if (deleteForumConfirm) {
+        deleteForumConfirm.addEventListener('click', executeDeleteForumPost);
+    }
 });
 
 async function loadMovieDetails(movieId) {
@@ -208,6 +221,7 @@ async function loadMovieDetails(movieId) {
 
         // 5. Load and Render Reviews
         await loadReviews(movieId);
+        await loadForum(movieId);
 
     } catch (e) {
         console.error('Error loading movie details:', e);
@@ -440,4 +454,325 @@ async function addReview() {
         errorEl.innerText = 'Errore: ' + (e.message || 'Impossibile salvare.');
         errorEl.classList.remove('hidden');
     }
+}
+
+// =========================================
+// MINI FORUM & DISCUSSION SYSTEM
+// =========================================
+
+let replyToPostId = null;
+let activeForumUsers = [];
+
+async function loadForum(movieId) {
+    const forumPostsEl = document.getElementById('forum-posts');
+    const notLoggedEl = document.getElementById('forum-not-logged');
+    const writeFormEl = document.getElementById('forum-write-form');
+    
+    if (!forumPostsEl) return;
+
+    forumPostsEl.innerHTML = `<span class="opacity-50 font-body-md text-on-surface-variant italic">Caricamento messaggi del forum...</span>`;
+
+    const currentUser = localStorage.getItem('stoike_user');
+    const currentRole = localStorage.getItem('stoike_role');
+    const isAdmin = currentUser && currentRole === 'admin';
+
+    // Show write form or login prompt
+    if (currentUser) {
+        if (notLoggedEl) notLoggedEl.classList.add('hidden');
+        if (writeFormEl) writeFormEl.classList.remove('hidden');
+        // Reset reply state
+        cancelForumReply();
+    } else {
+        if (notLoggedEl) notLoggedEl.classList.remove('hidden');
+        if (writeFormEl) writeFormEl.classList.add('hidden');
+    }
+
+    try {
+        const resp = await fetch(`/api/forum/${movieId}`);
+        const posts = await resp.json();
+        
+        if (Array.isArray(posts) && posts.length > 0) {
+            // Build list of active users for mentions
+            activeForumUsers = [...new Set(posts.map(p => p.username))];
+            
+            // Threaded structure grouping
+            const rootPosts = posts.filter(p => !p.parent_id);
+            const replies = posts.filter(p => p.parent_id);
+
+            let html = '';
+            rootPosts.forEach(root => {
+                html += renderForumPostCard(root, false, currentUser, isAdmin);
+                
+                // Get direct replies to this post
+                const directReplies = replies.filter(r => r.parent_id === root.id);
+                if (directReplies.length > 0) {
+                    html += `<div class="ml-6 md:ml-12 pl-4 border-l-2 border-primary-container/20 flex flex-col gap-3 mt-2 mb-4">`;
+                    directReplies.forEach(reply => {
+                        html += renderForumPostCard(reply, true, currentUser, isAdmin);
+                    });
+                    html += `</div>`;
+                }
+            });
+            forumPostsEl.innerHTML = html;
+        } else {
+            activeForumUsers = [];
+            forumPostsEl.innerHTML = `<p class="font-body-md text-on-surface-variant italic">Nessun commento presente nel forum. Sii il primo a iniziare il dibattito!</p>`;
+        }
+
+        // Initialize autocomplete listeners
+        initMentionAutocomplete();
+
+    } catch (err) {
+        console.error('Error fetching forum posts:', err);
+        forumPostsEl.innerHTML = `<p class="font-body-md text-on-surface-variant italic text-red-400">Impossibile caricare i messaggi del forum.</p>`;
+    }
+}
+
+function renderForumPostCard(post, isReply = false, currentUser, isAdmin) {
+    const isOwner = currentUser && currentUser === post.username;
+    const canDelete = isAdmin || isOwner;
+    const formattedDate = new Date(post.created_at).toLocaleString('it-IT', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+
+    // Parse @mentions
+    const parsedContent = post.content.replace(
+        /@(\w+)/g,
+        `<span class="bg-primary-container/15 text-primary-container px-1.5 py-0.5 rounded font-bold">@$1</span>`
+    );
+
+    return `
+        <div id="forum-post-${post.id}" class="p-4 glass-panel border border-white/5 rounded-xl flex flex-col gap-2 relative transition-all duration-300 hover:border-white/10 ${isReply ? 'bg-black/20' : 'bg-white/5'}">
+            <div class="flex items-center gap-2 mb-1">
+                <span class="material-symbols-outlined text-primary-container text-[18px]">account_circle</span>
+                <span class="font-label-md text-white font-bold">${post.username}</span>
+                ${isReply ? `
+                    <span class="font-label-sm text-primary-container bg-primary-container/10 px-2 py-0.5 rounded text-[10px] uppercase tracking-wider">Risposta</span>
+                ` : ''}
+                <span class="text-on-surface-variant font-label-sm text-[11px] ml-auto">${formattedDate}</span>
+            </div>
+            
+            <p class="font-body-md text-on-surface-variant whitespace-pre-wrap">${parsedContent}</p>
+            
+            <div class="flex gap-4 mt-2 border-t border-white/5 pt-2 font-label-sm text-[12px]">
+                ${currentUser ? `
+                    <button onclick="startForumReply('${post.id}', '${post.username}')" class="text-primary-container hover:text-white transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">reply</span> Rispondi
+                    </button>
+                    <button onclick="tagUser('${post.username}')" class="text-on-surface-variant hover:text-white transition-colors flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">alternate_email</span> Tagga
+                    </button>
+                ` : ''}
+                ${canDelete ? `
+                    <button onclick="deleteForumPost('${post.id}')" class="text-red-400 hover:text-red-300 transition-colors ml-auto flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">delete</span> Elimina
+                    </button>
+                ` : ''}
+            </div>
+        </div>
+    `;
+}
+
+function startForumReply(postId, username) {
+    replyToPostId = postId;
+    const indicator = document.getElementById('forum-reply-indicator');
+    const cancelBtn = document.getElementById('cancel-forum-reply');
+    const formTitle = document.getElementById('forum-form-title');
+    const textarea = document.getElementById('forum-post-text');
+
+    if (indicator) indicator.innerText = `In risposta a @${username}`;
+    if (cancelBtn) cancelBtn.classList.remove('hidden');
+    if (formTitle) formTitle.innerText = `Rispondi a ${username}`;
+    
+    // Auto-focus and scroll to the form nicely
+    if (textarea) {
+        textarea.focus();
+        textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+}
+
+function cancelForumReply() {
+    replyToPostId = null;
+    const indicator = document.getElementById('forum-reply-indicator');
+    const cancelBtn = document.getElementById('cancel-forum-reply');
+    const formTitle = document.getElementById('forum-form-title');
+    const textarea = document.getElementById('forum-post-text');
+
+    if (indicator) indicator.innerText = '';
+    if (cancelBtn) cancelBtn.classList.add('hidden');
+    if (formTitle) formTitle.innerText = `Scrivi un commento nel forum`;
+}
+
+function tagUser(username) {
+    const textarea = document.getElementById('forum-post-text');
+    if (!textarea) return;
+
+    const currentText = textarea.value;
+    const tag = `@${username} `;
+    
+    if (currentText.includes(tag)) {
+        textarea.focus();
+        return;
+    }
+
+    textarea.value = tag + currentText;
+    textarea.focus();
+}
+
+async function submitForumPost() {
+    const user = localStorage.getItem('stoike_user');
+    const textarea = document.getElementById('forum-post-text');
+    if (!user || !textarea) return;
+
+    const text = textarea.value.trim();
+    if (!text) return;
+
+    try {
+        const resp = await fetch('/api/forum', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                username: user,
+                tmdb_movie_id: currentMovieId,
+                content: text,
+                parent_id: replyToPostId
+            })
+        });
+
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.error || 'Errore salvataggio post.');
+
+        textarea.value = '';
+        cancelForumReply();
+        await loadForum(currentMovieId);
+    } catch (e) {
+        alert('Impossibile inviare il messaggio: ' + e.message);
+    }
+}
+
+let forumPostIdToDelete = null;
+
+function openDeleteForumModal(postId) {
+    forumPostIdToDelete = postId;
+    const modal = document.getElementById('delete-forum-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+    }
+}
+
+function closeDeleteForumModal() {
+    forumPostIdToDelete = null;
+    const modal = document.getElementById('delete-forum-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+}
+
+async function deleteForumPost(postId) {
+    openDeleteForumModal(postId);
+}
+
+async function executeDeleteForumPost() {
+    if (!forumPostIdToDelete) return;
+    const postId = forumPostIdToDelete;
+
+    const user = localStorage.getItem('stoike_user');
+    if (!user) {
+        closeDeleteForumModal();
+        return;
+    }
+
+    try {
+        const resp = await fetch(`/api/forum/${postId}`, {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user })
+        });
+
+        const data = await resp.json();
+        if (!data.success) throw new Error(data.error);
+
+        closeDeleteForumModal();
+        await loadForum(currentMovieId);
+    } catch (err) {
+        closeDeleteForumModal();
+        alert('Errore durante l\'eliminazione: ' + err.message);
+    }
+}
+
+// Mention Autocomplete logic
+function initMentionAutocomplete() {
+    const textarea = document.getElementById('forum-post-text');
+    const dropdown = document.getElementById('mention-dropdown');
+    if (!textarea || !dropdown) return;
+
+    textarea.addEventListener('input', () => {
+        const value = textarea.value;
+        const selectionEnd = textarea.selectionEnd;
+        
+        // Find if we are typing a mention
+        const textBeforeCursor = value.slice(0, selectionEnd);
+        const lastWordMatch = textBeforeCursor.match(/@(\w*)$/);
+
+        if (lastWordMatch && activeForumUsers.length > 0) {
+            const query = lastWordMatch[1].toLowerCase();
+            const matches = activeForumUsers.filter(u => u.toLowerCase().startsWith(query) && u.toLowerCase() !== localStorage.getItem('stoike_user')?.toLowerCase());
+            
+            if (matches.length > 0) {
+                renderMentionDropdown(matches, lastWordMatch.index, selectionEnd);
+            } else {
+                dropdown.classList.add('hidden');
+                dropdown.classList.remove('flex');
+            }
+        } else {
+            dropdown.classList.add('hidden');
+            dropdown.classList.remove('flex');
+        }
+    });
+
+    // Close dropdown on click outside
+    document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target) && e.target !== textarea) {
+            dropdown.classList.add('hidden');
+            dropdown.classList.remove('flex');
+        }
+    });
+}
+
+function renderMentionDropdown(users, matchStartIndex, matchEndIndex) {
+    const textarea = document.getElementById('forum-post-text');
+    const dropdown = document.getElementById('mention-dropdown');
+    if (!textarea || !dropdown) return;
+
+    dropdown.innerHTML = users.map(user => `
+        <button type="button" class="px-4 py-2 hover:bg-primary-container hover:text-black text-left text-white font-label-sm transition-colors flex items-center gap-2 w-full border-b border-white/5 last:border-b-0">
+            <span class="material-symbols-outlined text-[16px]">alternate_email</span>
+            <span>${user}</span>
+        </button>
+    `).join('');
+
+    dropdown.classList.remove('hidden');
+    dropdown.classList.add('flex');
+
+    // Attach click listeners to options
+    const buttons = dropdown.querySelectorAll('button');
+    buttons.forEach((btn, idx) => {
+        btn.addEventListener('click', () => {
+            const username = users[idx];
+            const value = textarea.value;
+            const before = value.slice(0, matchStartIndex);
+            const after = value.slice(matchEndIndex);
+            
+            textarea.value = before + `@${username} ` + after;
+            textarea.focus();
+            dropdown.classList.add('hidden');
+            dropdown.classList.remove('flex');
+        });
+    });
 }

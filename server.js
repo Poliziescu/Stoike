@@ -283,6 +283,121 @@ app.delete('/api/reviews/:review_id', async (req, res) => {
 
 
 // =========================================
+// MINI FORUM API (Supabase integration)
+// =========================================
+
+// Recupera tutti i post del forum per un determinato film
+app.get('/api/forum/:movie_id', async (req, res) => {
+    const movie_id = req.params.movie_id;
+    console.log(`💬 [Forum Get] Richiesta post per film ID: ${movie_id}`);
+
+    try {
+        const response = await axios.get(`${SUPABASE_URL}/rest/v1/forum_posts`, {
+            params: {
+                tmdb_movie_id: `eq.${movie_id}`,
+                order: 'created_at.asc',
+                select: '*'
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`💬 [Forum Get] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Forum Get] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+// Aggiunge un nuovo post (o risposta) al forum
+app.post('/api/forum', async (req, res) => {
+    const { username, tmdb_movie_id, content, parent_id } = req.body || {};
+    console.log(`💬 [Forum Insert] Utente '${username}' scrive nel forum per film ID ${tmdb_movie_id}`);
+
+    if (!username || !tmdb_movie_id || !content) {
+        return res.status(400).json({ success: false, message: 'Dati incompleti.' });
+    }
+
+    try {
+        const response = await axios.post(`${SUPABASE_URL}/rest/v1/forum_posts`, {
+            username: username,
+            tmdb_movie_id: parseInt(tmdb_movie_id),
+            content: content,
+            parent_id: parent_id || null
+        }, {
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`💬 [Forum Insert] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json({ success: true, data: response.data[0] });
+    } catch (error) {
+        console.error(`❌ [Forum Insert] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json({ success: false, error: error.message });
+    }
+});
+
+// Cancella un post dal forum (per admin o proprietario)
+app.delete('/api/forum/:post_id', async (req, res) => {
+    const post_id = req.params.post_id;
+    const { username } = req.body || {};
+    console.log(`🗑️ [Forum Delete] Richiesta cancellazione post ID ${post_id} da parte di '${username}'`);
+
+    if (!username) {
+        return res.status(400).json({ success: false, error: 'Username obbligatorio.' });
+    }
+
+    try {
+        // 1. Recupera il post dal database per capire chi lo ha scritto
+        const postRes = await axios.get(`${SUPABASE_URL}/rest/v1/forum_posts`, {
+            params: { id: `eq.${post_id}` },
+            headers: supabaseHeaders(),
+            timeout: 5000
+        });
+        const post = postRes.data && postRes.data[0];
+        if (!post) {
+            return res.status(404).json({ success: false, error: 'Post non trovato.' });
+        }
+
+        // 2. Recupera il ruolo dell'utente che richiede la cancellazione
+        const userRes = await axios.get(`${SUPABASE_URL}/rest/v1/users`, {
+            params: { username: `eq.${username}` },
+            headers: supabaseHeaders(),
+            timeout: 5000
+        });
+        const userObj = userRes.data && userRes.data[0];
+        const userRole = userObj ? userObj.role : null;
+
+        // 3. Verifica i permessi: solo admin o l'autore stesso possono procedere
+        const isAdmin = userRole === 'admin';
+        const isOwner = post.username === username;
+
+        if (!isAdmin && !isOwner) {
+            return res.status(403).json({ success: false, error: 'Non hai i permessi per eliminare questo messaggio.' });
+        }
+
+        // 4. Esegui la cancellazione effettiva
+        const response = await axios.delete(`${SUPABASE_URL}/rest/v1/forum_posts`, {
+            params: {
+                id: `eq.${post_id}`
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`🗑️ [Forum Delete] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json({ success: true });
+    } catch (error) {
+        console.error(`❌ [Forum Delete] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        return res.status(status).json({ success: false, error: error.message });
+    }
+});
+
+
+// =========================================
 // GESTIONE TICKET BUG REPORT (GITHUB API & WEBHOOK)
 // =========================================
 const rateLimitDb = new Map();
