@@ -33,3 +33,9 @@ temp/
 dist/
 build/
 out/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/

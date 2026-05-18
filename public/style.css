@@ -1,0 +1,18 @@
+body {
+    background-color: #131313;
+    color: #e5e2e1;
+}
+.glass-panel {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+}
+.glass-panel-hover:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+.material-fill-0 {
+    font-variation-settings: 'FILL' 0;
+}
+.material-fill-1 {
+    font-variation-settings: 'FILL' 1;
+}

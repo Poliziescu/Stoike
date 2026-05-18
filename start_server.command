@@ -1,0 +1,24 @@
+#!/bin/bash
+# Stoike - Start Server Launcher
+# Questo script viene eseguito automaticamente facendo doppio clic su di esso in Finder.
+
+# Trova la directory dello script
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$DIR"
+
+echo "============================================="
+echo "🎬 STOIKE - Avvio del Server Flask..."
+echo "============================================="
+
+# Controlla se le dipendenze sono installate
+echo "1. Installazione/Verifica delle dipendenze..."
+pip3 install -r requirements.txt
+
+echo ""
+echo "2. Avvio del server..."
+echo "Il sito sarà disponibile all'indirizzo: http://localhost:5001"
+echo "Per arrestare il server, premi CTRL+C in questa finestra."
+echo "============================================="
+echo ""
+
+python3 server.py
