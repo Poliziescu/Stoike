@@ -612,31 +612,35 @@
                 // Popola i generi dinamicamente usando i generi di TMDb
                 const genresContainer = document.getElementById('genres-container');
                 if (genresContainer && Object.keys(tmdbGenres).length > 0) {
-                    const uniqueGenres = Object.values(tmdbGenres).sort();
-                    
-                    let genresHTML = `<button class="genre-btn px-6 py-3 bg-surface-container border border-outline-variant/20 font-label-md text-label-md rounded-full hover:bg-surface-container-high hover:border-primary-container/50 transition-colors" data-genre="All">All</button>`;
-                    genresHTML += uniqueGenres.map(genre => `
-                        <button class="genre-btn px-6 py-3 bg-surface-container border border-outline-variant/20 font-label-md text-label-md rounded-full hover:bg-surface-container-high hover:border-primary-container/50 transition-colors" data-genre="${genre}">${genre}</button>
+                    let genresHTML = `<button class="genre-btn px-6 py-3 bg-surface-container border border-outline-variant/20 font-label-md text-label-md rounded-full hover:bg-surface-container-high hover:border-primary-container/50 transition-colors" data-genre="All" data-genre-id="">All</button>`;
+                    genresHTML += Object.entries(tmdbGenres)
+                        .sort((a, b) => a[1].localeCompare(b[1]))
+                        .map(([id, name]) => `
+                        <button class="genre-btn px-6 py-3 bg-surface-container border border-outline-variant/20 font-label-md text-label-md rounded-full hover:bg-surface-container-high hover:border-primary-container/50 transition-colors" data-genre="${name}" data-genre-id="${id}">${name}</button>
                     `).join('');
                     
                     genresContainer.innerHTML = genresHTML;
                     
                     // Aggiungi event listener ai nuovi bottoni
                     document.querySelectorAll('.genre-btn').forEach(btn => {
-                        btn.addEventListener('click', () => {
+                        btn.addEventListener('click', async () => {
                             const genre = btn.getAttribute('data-genre');
+                            const genreId = btn.getAttribute('data-genre-id');
+                            
                             if (moviesGrid) {
+                                moviesGrid.innerHTML = '<div class="col-span-full text-center py-12"><span class="opacity-50">Caricamento in corso...</span></div>';
                                 moviesGrid.classList.remove('hidden');
-                                const cards = Array.from(moviesGrid.querySelectorAll('.movie-card'));
-                                cards.forEach(card => {
-                                    if (genre === 'All' || card.getAttribute('data-genre') === genre) {
-                                        card.classList.remove('hidden');
-                                    } else {
-                                        card.classList.add('hidden');
-                                    }
-                                });
+                                
+                                let newMovies = [];
+                                if (genre === 'All') {
+                                    newMovies = await loadMovies('/trending/movie/week');
+                                } else {
+                                    newMovies = await loadMovies(`/discover/movie?with_genres=${genreId}&sort_by=popularity.desc`);
+                                }
+                                
+                                renderMovies(newMovies, moviesGrid);
                             }
-                            if (sectionTitle) sectionTitle.innerText = genre === 'All' ? 'Tutti i generi' : 'Genre: ' + genre;
+                            if (sectionTitle) sectionTitle.innerText = genre === 'All' ? 'Tutti i generi' : 'Genere: ' + genre;
                         });
                     });
                 }
