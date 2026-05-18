@@ -17,14 +17,21 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Parse URL params
     const params = new URLSearchParams(window.location.search);
     const query = params.get('query');
+    const year = params.get('year');
     const type = params.get('type');
 
     let endpoint = '/trending/movie/week';
     let pageTitle = i18n.t('list.catalog');
 
-    if (query) {
+    if (query && year) {
+        pageTitle = `${i18n.t('list.resultsFor')} "${query}" (${year})`;
+        endpoint = `/search/movie?query=${encodeURIComponent(query)}&primary_release_year=${encodeURIComponent(year)}`;
+    } else if (query) {
         pageTitle = `${i18n.t('list.resultsFor')} "${query}"`;
         endpoint = `/search/movie?query=${encodeURIComponent(query)}`;
+    } else if (year) {
+        pageTitle = `Film del ${year}`;
+        endpoint = `/discover/movie?primary_release_year=${encodeURIComponent(year)}&sort_by=popularity.desc`;
     } else if (type) {
         if (type === 'top_rated') {
             pageTitle = i18n.t('list.topRated');

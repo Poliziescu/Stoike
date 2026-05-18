@@ -12,6 +12,8 @@ const translations = {
 
     // ── Search ──
     'search.placeholder':  { it: 'Cerca...', en: 'Search...', fr: 'Rechercher...', es: 'Buscar...', de: 'Suchen...' },
+    'search.year':         { it: 'Anno', en: 'Year', fr: 'Année', es: 'Año', de: 'Jahr' },
+    'search.clearYear':    { it: 'Pulisci', en: 'Clear', fr: 'Effacer', es: 'Limpiar', de: 'Löschen' },
     'search.noResults':    { it: 'Nessun risultato', en: 'No results', fr: 'Aucun résultat', es: 'Sin resultados', de: 'Keine Ergebnisse' },
 
     // ── Sidebar ──

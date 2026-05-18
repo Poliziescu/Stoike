@@ -142,20 +142,55 @@ function closeDrawer() {
     }
 }
 
-// Search execution redirects to list.html with query
+// Search execution redirects to list.html with query and year
 function executeSearchGlobal() {
     const input = document.getElementById('search-input');
+    const yearInput = document.getElementById('search-year-input');
+    
     const query = input ? input.value.trim() : '';
-    if (!query) return;
-    window.location.href = `/list.html?query=${encodeURIComponent(query)}`;
+    const year = yearInput ? yearInput.value.trim() : '';
+    
+    if (!query && !year) return;
+    
+    let url = '/list.html?';
+    if (query) url += `query=${encodeURIComponent(query)}&`;
+    if (year) url += `year=${encodeURIComponent(year)}`;
+    
+    window.location.href = url;
 }
 
-async function fetchSuggestionsGlobal(query) {
+async function fetchSuggestionsGlobal() {
     const suggestionsBox = document.getElementById('search-suggestions');
-    if (!query || !suggestionsBox) return;
+    const input = document.getElementById('search-input');
+    const yearInput = document.getElementById('search-year-input');
     
-    // Load TMDB results through common API
-    const rawData = await fetchTMDB(`/search/movie?query=${encodeURIComponent(query)}`);
+    if (!suggestionsBox) return;
+
+    const query = input ? input.value.trim() : '';
+    const year = yearInput ? yearInput.value.trim() : '';
+
+    if (!query && !year) {
+        suggestionsBox.classList.add('hidden');
+        suggestionsBox.classList.remove('flex');
+        return;
+    }
+    
+    // Show Loading state
+    suggestionsBox.innerHTML = `<div class="p-4 text-center font-label-md text-on-surface-variant animate-pulse">. . .</div>`;
+    suggestionsBox.classList.remove('hidden');
+    suggestionsBox.classList.add('flex');
+
+    let endpoint = '';
+    if (query && year) {
+        endpoint = `/search/movie?query=${encodeURIComponent(query)}&primary_release_year=${encodeURIComponent(year)}`;
+    } else if (query) {
+        endpoint = `/search/movie?query=${encodeURIComponent(query)}`;
+    } else if (year) {
+        endpoint = `/discover/movie?primary_release_year=${encodeURIComponent(year)}&sort_by=popularity.desc`;
+    }
+    
+    const rawData = await fetchTMDB(endpoint);
+    
     if (rawData && rawData.results && rawData.results.length > 0) {
         suggestionsBox.innerHTML = '';
         rawData.results.slice(0, 5).forEach(m => {
@@ -165,16 +200,15 @@ async function fetchSuggestionsGlobal(query) {
             item.innerHTML = `<img src="${movie.poster_url}" class="w-10 h-14 object-cover rounded shadow-sm" alt="${movie.title}" onerror="this.src='https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover'"><div class="flex-1 min-w-0"><div class="font-label-md text-white truncate">${movie.title}</div><div class="font-label-sm text-on-surface-variant">${movie.release_year} • <span class="material-symbols-outlined text-[12px] material-fill-1 text-primary-container align-middle">star</span> ${movie.rating}</div></div>`;
             item.addEventListener('click', () => {
                 suggestionsBox.classList.add('hidden');
-                const si = document.getElementById('search-input');
-                if (si) si.value = '';
+                suggestionsBox.classList.remove('flex');
+                if (input) input.value = '';
+                if (yearInput) yearInput.value = '';
                 window.location.href = `/movie.html?id=${movie.id}`;
             });
             suggestionsBox.appendChild(item);
         });
-        suggestionsBox.classList.remove('hidden');
     } else {
         suggestionsBox.innerHTML = `<div class="p-4 text-center font-label-md text-on-surface-variant">${window.i18n ? i18n.t('search.noResults') : 'Nessun risultato'}</div>`;
-        suggestionsBox.classList.remove('hidden');
     }
 }
 
@@ -349,33 +383,130 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Search Box suggest and key event listeners
-    const si = document.getElementById('search-input');
-    let st = null;
-    if (si) {
-        si.addEventListener('input', e => {
-            clearTimeout(st);
-            const q = e.target.value.trim();
-            if (!q) {
-                const suggestionsBox = document.getElementById('search-suggestions');
-                if (suggestionsBox) suggestionsBox.classList.add('hidden');
-                return;
-            }
-            st = setTimeout(() => fetchSuggestionsGlobal(q), 1000);
-        });
+    // Global search debounce
+    const globalSearchInput = document.getElementById('search-input');
+    const globalYearInput = document.getElementById('search-year-input');
+    let searchTimeout = null;
+
+    function triggerSearchSuggest() {
+        clearTimeout(searchTimeout);
+        const suggestionsBox = document.getElementById('search-suggestions');
         
-        si.addEventListener('keydown', e => {
-            if (e.key === 'Enter') {
-                clearTimeout(st);
-                executeSearchGlobal();
-            }
-        });
+        const q = globalSearchInput ? globalSearchInput.value.trim() : '';
+        const y = globalYearInput ? globalYearInput.value.trim() : '';
         
-        document.addEventListener('click', e => {
-            const container = document.getElementById('search-container');
-            const suggestionsBox = document.getElementById('search-suggestions');
-            if (container && !container.contains(e.target) && suggestionsBox) {
+        if (!q && !y) {
+            if (suggestionsBox) {
                 suggestionsBox.classList.add('hidden');
+                suggestionsBox.classList.remove('flex');
+            }
+            return;
+        }
+
+        // Immediately show the loading UI before debounce ends
+        if (suggestionsBox) {
+            suggestionsBox.innerHTML = `<div class="p-4 text-center font-label-md text-on-surface-variant animate-pulse">. . .</div>`;
+            suggestionsBox.classList.remove('hidden');
+            suggestionsBox.classList.add('flex');
+        }
+
+        searchTimeout = setTimeout(() => {
+            fetchSuggestionsGlobal();
+        }, 500);
+    }
+
+    if (globalSearchInput) {
+        globalSearchInput.addEventListener('input', triggerSearchSuggest);
+        globalSearchInput.addEventListener('focus', triggerSearchSuggest);
+        globalSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') executeSearchGlobal();
+        });
+    }
+
+    if (globalYearInput) {
+        globalYearInput.addEventListener('input', triggerSearchSuggest);
+        globalYearInput.addEventListener('focus', triggerSearchSuggest);
+        globalYearInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') executeSearchGlobal();
+        });
+    }
+
+    // Hide global search suggestions on click outside
+    document.addEventListener('click', (e) => {
+        const container = document.getElementById('search-container');
+        const suggestionsBox = document.getElementById('search-suggestions');
+        if (container && suggestionsBox && !container.contains(e.target)) {
+            suggestionsBox.classList.add('hidden');
+            suggestionsBox.classList.remove('flex');
+        }
+    });
+
+    // Custom Year Picker Logic
+    const ypInput = document.getElementById('search-year-input');
+    const ypDropdown = document.getElementById('year-picker-dropdown');
+    const ypPrev = document.getElementById('yp-prev');
+    const ypNext = document.getElementById('yp-next');
+    const ypLabel = document.getElementById('yp-decade-label');
+    const ypGrid = document.getElementById('yp-grid');
+    const ypClear = document.getElementById('yp-clear');
+    
+    let currentDecadeStart = Math.floor(new Date().getFullYear() / 10) * 10;
+
+    function renderYearPicker() {
+        if (!ypLabel || !ypGrid) return;
+        ypLabel.innerText = `${currentDecadeStart} - ${currentDecadeStart + 9}`;
+        ypGrid.innerHTML = '';
+        for (let i = 0; i < 10; i++) {
+            const year = currentDecadeStart + i;
+            const btn = document.createElement('button');
+            btn.className = 'py-2 px-2 rounded-md font-label-md text-on-surface-variant hover:bg-white/10 hover:text-white transition-colors';
+            if (ypInput && ypInput.value == year) {
+                btn.className = 'py-2 px-2 rounded-md font-label-md bg-primary-container text-black font-bold shadow-lg';
+            }
+            btn.innerText = year;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (ypInput) {
+                    ypInput.value = year;
+                    triggerSearchSuggest();
+                }
+                if (ypDropdown) {
+                    ypDropdown.classList.add('hidden');
+                    ypDropdown.classList.remove('flex');
+                }
+            });
+            ypGrid.appendChild(btn);
+        }
+    }
+
+    if (ypInput && ypDropdown) {
+        ypInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (ypInput.value) {
+                currentDecadeStart = Math.floor(parseInt(ypInput.value) / 10) * 10;
+            } else {
+                currentDecadeStart = Math.floor(new Date().getFullYear() / 10) * 10;
+            }
+            renderYearPicker();
+            ypDropdown.classList.toggle('hidden');
+            ypDropdown.classList.toggle('flex');
+        });
+        
+        if (ypPrev) ypPrev.addEventListener('click', (e) => { e.stopPropagation(); currentDecadeStart -= 10; renderYearPicker(); });
+        if (ypNext) ypNext.addEventListener('click', (e) => { e.stopPropagation(); currentDecadeStart += 10; renderYearPicker(); });
+        
+        if (ypClear) ypClear.addEventListener('click', (e) => {
+            e.stopPropagation();
+            ypInput.value = '';
+            ypDropdown.classList.add('hidden');
+            ypDropdown.classList.remove('flex');
+            triggerSearchSuggest();
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!ypInput.contains(e.target) && !ypDropdown.contains(e.target)) {
+                ypDropdown.classList.add('hidden');
+                ypDropdown.classList.remove('flex');
             }
         });
     }
