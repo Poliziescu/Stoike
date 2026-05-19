@@ -7,4 +7,6 @@
 - [ ] Implementare funzione per click su related movies
 - [x] Implementare funzione per click su similar movies
 - [x] Implementare Forum in dettaglio del film
-- test push
+- [x] Implementare tasto carica altri al fondo della schermata movies per caricare altri film
+- [ ] Implementare riproduzione trailer con hovering del cursore
+- [ ] Implementare pagina per gestione proprio account
