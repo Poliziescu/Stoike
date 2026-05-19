@@ -215,15 +215,10 @@ async function fetchSuggestionsGlobal() {
 // Global movie card renderer used on all search/list/genre results
 function renderMovieCard(movie) {
     return `
-        <div class="movie-card group flex flex-col bg-surface-container/30 border border-outline-variant/10 rounded-2xl overflow-hidden hover:border-primary-container/30 hover:bg-surface-container/50 hover:shadow-2xl hover:shadow-primary-container/5 transition-all duration-500 cursor-pointer" onclick="window.location.href='/movie.html?id=${movie.id}'">
-            <div class="relative aspect-[2/3] overflow-hidden">
+        <div class="movie-card group flex flex-col bg-surface-container/30 border border-outline-variant/10 rounded-2xl overflow-hidden hover:border-primary-container/30 hover:bg-surface-container/50 hover:shadow-2xl hover:shadow-primary-container/5 transition-all duration-500 cursor-pointer" data-movie-id="${movie.id}" onclick="window.location.href='/movie.html?id=${movie.id}'">
+            <div class="relative aspect-[2/3] overflow-hidden card-media-container">
                 <img src="${movie.poster_url}" alt="${movie.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy" onerror="this.src='https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover'" />
-                <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-4">
-                    <button class="w-12 h-12 bg-primary-container text-black rounded-full flex items-center justify-center hover:scale-110 active:scale-95 transition-transform duration-300 shadow-lg mx-auto">
-                        <span class="material-symbols-outlined material-fill-1 text-[28px]">play_arrow</span>
-                    </button>
-                </div>
-                <div class="absolute top-3 right-3 px-3 py-1 bg-black/60 backdrop-blur-md border border-outline-variant/20 rounded-full flex items-center gap-1">
+                <div class="movie-rating-badge absolute top-3 right-3 px-3 py-1 bg-black/60 backdrop-blur-md border border-outline-variant/20 rounded-full flex items-center gap-1 z-30 transition-opacity duration-300">
                     <span class="material-symbols-outlined text-[14px] material-fill-1 text-primary-container">star</span>
                     <span class="font-label-sm text-label-sm text-primary-container">${movie.rating}</span>
                 </div>
@@ -668,3 +663,239 @@ function getQueryParam(param, url) {
         return null;
     }
 }
+
+// Dynamic movie card hover trailer playback and visual focus system
+(function initMovieCardHoverTrailerSystem() {
+    let activeHoverCard = null;
+    let hoverTimeout = null;
+    let prefetchPromise = null;
+    let prefetchMovieId = null;
+
+    // Inject premium styles for focus, cinematic modal, and background blur dynamically
+    const style = document.createElement('style');
+    style.innerHTML = `
+        .movie-card {
+            transition: border-color 0.6s ease, 
+                        box-shadow 0.6s ease,
+                        filter 0.8s cubic-bezier(0.25, 1, 0.2, 1),
+                        opacity 0.8s cubic-bezier(0.25, 1, 0.2, 1) !important;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .card-media-container {
+            aspect-ratio: 2 / 3 !important;
+            width: 100% !important;
+            height: auto !important;
+        }
+        
+        /* Cinematic full screen blurred backdrop */
+        .movie-card-backdrop {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            z-index: 9990;
+            opacity: 0;
+            transition: opacity 0.8s cubic-bezier(0.25, 1, 0.2, 1);
+            pointer-events: none;
+        }
+        
+        .movie-card-backdrop.active {
+            opacity: 1;
+        }
+        
+        /* Premium Centered Trailer Modal exactly matching the movie details trailer */
+        .movie-trailer-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0.95);
+            width: 90vw;
+            max-width: 896px; /* matches max-w-4xl details container */
+            aspect-ratio: 16 / 9;
+            z-index: 9995;
+            opacity: 0;
+            transition: transform 0.8s cubic-bezier(0.25, 1, 0.2, 1), 
+                        opacity 0.8s cubic-bezier(0.25, 1, 0.2, 1);
+            pointer-events: none; /* Let cursor pass through to prevent triggering card mouseout! */
+            background-color: #000;
+            border-radius: 12px; /* rounded-xl */
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 50px 100px rgba(0, 0, 0, 0.95), 0 0 45px rgba(255, 215, 0, 0.25);
+        }
+        
+        .movie-trailer-modal.active {
+            opacity: 1;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        
+        /* Theater mode: Blurs and dims all cards EXCEPT the active hovered one */
+        body.movie-card-focus-active .movie-card:not(.hovered-source-card) {
+            filter: blur(5px) brightness(0.25) grayscale(0.2) !important;
+            opacity: 0.45 !important;
+        }
+        
+        body.movie-card-focus-active .movie-card.hovered-source-card {
+            border-color: #ffd700 !important;
+            box-shadow: 0 10px 30px rgba(255, 215, 0, 0.25) !important;
+            z-index: 10 !important;
+        }
+        
+        .movie-card-loader {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    `;
+    document.head.appendChild(style);
+
+    // Setup hover triggers using event delegation
+    document.addEventListener('mouseover', (e) => {
+        const card = e.target.closest('.movie-card');
+        if (!card) return;
+
+        // If we are already hovering on this card, do nothing
+        if (activeHoverCard === card) return;
+
+        // Clean up previous card if any
+        if (activeHoverCard) {
+            cleanupCard(activeHoverCard);
+        }
+
+        activeHoverCard = card;
+        setupCardHover(card);
+    });
+
+    document.addEventListener('mouseout', (e) => {
+        const relatedTarget = e.relatedTarget;
+        if (activeHoverCard && (!relatedTarget || !activeHoverCard.contains(relatedTarget))) {
+            cleanupCard(activeHoverCard);
+            activeHoverCard = null;
+        }
+    });
+
+    function setupCardHover(card) {
+        const movieId = card.getAttribute('data-movie-id');
+        if (!movieId) return;
+
+        const mediaContainer = card.querySelector('.card-media-container');
+        if (!mediaContainer) return;
+
+        // 1. Immediately (second 0): inject dynamic loading overlay
+        const loader = document.createElement('div');
+        loader.className = 'movie-card-loader absolute inset-0 bg-black/70 backdrop-blur-[3px] flex flex-col items-center justify-center gap-2 z-20 transition-all duration-300';
+        loader.innerHTML = `
+            <span class="material-symbols-outlined animate-spin text-primary-container text-[36px] material-fill-1">sync</span>
+            <span class="text-white font-label-md tracking-wider uppercase text-[10px] bg-black/50 px-2.5 py-1 rounded-full border border-white/10 shadow-lg">Anteprima...</span>
+        `;
+        mediaContainer.appendChild(loader);
+
+        // Pre-fetch the trailer videos concurrently
+        prefetchMovieId = movieId;
+        prefetchPromise = fetchTMDB(`/movie/${movieId}/videos`).catch(() => null);
+
+        // 2. Set timeout for 3 seconds of focused hovering
+        hoverTimeout = setTimeout(async () => {
+            if (activeHoverCard !== card) return;
+
+            // Wait for prefetch or fetch video info
+            const videos = await prefetchPromise;
+            if (activeHoverCard !== card) return;
+
+            const trailer = videos && videos.results ? videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube') : null;
+
+            if (trailer && trailer.key) {
+                // Highlight source card and set body theater mode class
+                card.classList.add('hovered-source-card');
+                document.body.classList.add('movie-card-focus-active');
+
+                // Remove loading overlay from the card
+                if (loader) {
+                    loader.remove();
+                }
+
+                // Inject the dynamic cinema backdrop overlay
+                let backdrop = document.querySelector('.movie-card-backdrop');
+                if (!backdrop) {
+                    backdrop = document.createElement('div');
+                    backdrop.className = 'movie-card-backdrop';
+                    document.body.appendChild(backdrop);
+                }
+
+                // Inject the dynamic trailer modal
+                let modal = document.querySelector('.movie-trailer-modal');
+                if (!modal) {
+                    modal = document.createElement('div');
+                    modal.className = 'movie-trailer-modal';
+                    document.body.appendChild(modal);
+                }
+
+                // Render the YouTube iframe inside the modal styled exactly like the movie details trailer
+                modal.innerHTML = `
+                    <iframe class="w-full h-full" src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&modestbranding=1&loop=1&playlist=${trailer.key}&rel=0&iv_load_policy=3&showinfo=0" frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>
+                `;
+
+                // Force reflow and activate transitions
+                backdrop.offsetHeight;
+                modal.offsetHeight;
+
+                backdrop.classList.add('active');
+                modal.classList.add('active');
+            } else {
+                // No trailer: remove loading overlay
+                if (loader) {
+                    loader.remove();
+                }
+            }
+        }, 3000);
+    }
+
+    function cleanupCard(card) {
+        clearTimeout(hoverTimeout);
+        hoverTimeout = null;
+
+        // Restore visual styling and deactivate theater mode
+        card.classList.remove('hovered-source-card');
+        document.body.classList.remove('movie-card-focus-active');
+
+        // Deactivate and fade out cinema backdrop
+        const backdrop = document.querySelector('.movie-card-backdrop');
+        if (backdrop) {
+            backdrop.classList.remove('active');
+            setTimeout(() => {
+                if (!document.body.classList.contains('movie-card-focus-active')) {
+                    backdrop.remove();
+                }
+            }, 800);
+        }
+
+        // Deactivate and fade out dynamic trailer modal
+        const modal = document.querySelector('.movie-trailer-modal');
+        if (modal) {
+            modal.classList.remove('active');
+            setTimeout(() => {
+                if (!document.body.classList.contains('movie-card-focus-active')) {
+                    modal.remove();
+                }
+            }, 800);
+        }
+
+        const mediaContainer = card.querySelector('.card-media-container');
+        if (mediaContainer) {
+            // Restore poster opacity
+            const img = mediaContainer.querySelector('img');
+            if (img) img.style.opacity = '1';
+
+            // Remove loading overlay
+            const loader = mediaContainer.querySelector('.movie-card-loader');
+            if (loader) loader.remove();
+        }
+    }
+})();
+

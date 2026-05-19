@@ -12,5 +12,5 @@
 - [x] bug su creazione ticket git
 - ricerca attori in like come ricerca princpale dei film
 - [x] Implementare tasto carica altri al fondo della schermata movies per caricare altri film
-- [ ] Implementare riproduzione trailer con hovering del cursore
+- [x] Implementare riproduzione trailer con hovering del cursore
 - [ ] Implementare pagina per gestione proprio account
