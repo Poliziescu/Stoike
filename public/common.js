@@ -670,6 +670,7 @@ function getQueryParam(param, url) {
     let hoverTimeout = null;
     let prefetchPromise = null;
     let prefetchMovieId = null;
+    let isModalActive = false;
 
     // Inject premium styles for focus, cinematic modal, and background blur dynamically
     const style = document.createElement('style');
@@ -704,6 +705,8 @@ function getQueryParam(param, url) {
         
         .movie-card-backdrop.active {
             opacity: 1;
+            pointer-events: auto;
+            cursor: pointer;
         }
         
         /* Premium Centered Trailer Modal exactly matching the movie details trailer */
@@ -719,7 +722,7 @@ function getQueryParam(param, url) {
             opacity: 0;
             transition: transform 0.8s cubic-bezier(0.25, 1, 0.2, 1), 
                         opacity 0.8s cubic-bezier(0.25, 1, 0.2, 1);
-            pointer-events: none; /* Let cursor pass through to prevent triggering card mouseout! */
+            pointer-events: none;
             background-color: #000;
             border-radius: 12px; /* rounded-xl */
             overflow: hidden;
@@ -730,6 +733,7 @@ function getQueryParam(param, url) {
         .movie-trailer-modal.active {
             opacity: 1;
             transform: translate(-50%, -50%) scale(1);
+            pointer-events: auto;
         }
         
         /* Theater mode: Blurs and dims all cards EXCEPT the active hovered one */
@@ -760,8 +764,8 @@ function getQueryParam(param, url) {
         const card = e.target.closest('.movie-card');
         if (!card) return;
 
-        // If we are already hovering on this card, do nothing
-        if (activeHoverCard === card) return;
+        // If we are already hovering on this card or a trailer is active, do nothing
+        if (activeHoverCard === card || isModalActive) return;
 
         // Clean up previous card if any
         if (activeHoverCard) {
@@ -773,6 +777,8 @@ function getQueryParam(param, url) {
     });
 
     document.addEventListener('mouseout', (e) => {
+        if (isModalActive) return; // Do not dismiss if the trailer is currently playing!
+
         const relatedTarget = e.relatedTarget;
         if (activeHoverCard && (!relatedTarget || !activeHoverCard.contains(relatedTarget))) {
             cleanupCard(activeHoverCard);
@@ -811,6 +817,9 @@ function getQueryParam(param, url) {
             const trailer = videos && videos.results ? videos.results.find(v => v.type === 'Trailer' && v.site === 'YouTube') : null;
 
             if (trailer && trailer.key) {
+                // Lock interaction and trigger active modal state
+                isModalActive = true;
+
                 // Highlight source card and set body theater mode class
                 card.classList.add('hovered-source-card');
                 document.body.classList.add('movie-card-focus-active');
@@ -826,6 +835,14 @@ function getQueryParam(param, url) {
                     backdrop = document.createElement('div');
                     backdrop.className = 'movie-card-backdrop';
                     document.body.appendChild(backdrop);
+                    
+                    // Click on backdrop is the ONLY way to exit the playing trailer modal
+                    backdrop.addEventListener('click', () => {
+                        if (activeHoverCard) {
+                            cleanupCard(activeHoverCard);
+                            activeHoverCard = null;
+                        }
+                    });
                 }
 
                 // Inject the dynamic trailer modal
@@ -859,6 +876,7 @@ function getQueryParam(param, url) {
     function cleanupCard(card) {
         clearTimeout(hoverTimeout);
         hoverTimeout = null;
+        isModalActive = false;
 
         // Restore visual styling and deactivate theater mode
         card.classList.remove('hovered-source-card');
