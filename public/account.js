@@ -1,0 +1,346 @@
+// =========================================
+// STOIKE — Logica Frontend della Pagina Account
+// =========================================
+
+// Stato originale del profilo (usato per la funzione Annulla)
+let originalProfile = {
+    username: '',
+    nickname: '',
+    avatar_url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3',
+};
+
+// Immagine attualmente selezionata codificata in Base64 (se caricata)
+let uploadedAvatarBase64 = null;
+
+// All'avvio del DOM
+document.addEventListener('DOMContentLoaded', async () => {
+    // 1. Verifica autenticazione
+    const username = localStorage.getItem('stoike_user');
+    if (!username) {
+        // Se l'utente non è registrato/loggato, reindirizza alla home
+        window.location.href = '/index.html';
+        return;
+    }
+
+    // 2. Popola campo username (sola lettura)
+    const usernameInput = document.getElementById('profile-username');
+    if (usernameInput) {
+        usernameInput.value = username;
+    }
+    originalProfile.username = username;
+
+    // 3. Recupera dati del profilo dal server
+    await loadUserProfile(username);
+
+    // 4. Traduzione della pagina
+    if (window.i18n) {
+        // Aggiungiamo dinamicamente le traduzioni della pagina account all'i18n engine
+        extendI18nTranslations();
+        i18n.applyTranslations();
+    }
+
+    // 5. Setup del form
+    const form = document.getElementById('profile-form');
+    if (form) {
+        form.addEventListener('submit', handleProfileSave);
+    }
+});
+
+// Carica il profilo dal server
+async function loadUserProfile(username) {
+    try {
+        const response = await fetch(`/api/user/profile?username=${encodeURIComponent(username)}`);
+        const data = await response.json();
+        
+        if (data && data.success) {
+            const nickname = data.nickname || '';
+            const avatarUrl = data.avatar_url || originalProfile.avatar_url;
+
+            // Aggiorna input Nickname
+            const nicknameInput = document.getElementById('profile-nickname');
+            if (nicknameInput) nicknameInput.value = nickname;
+
+            // Aggiorna preview avatar
+            const avatarPreview = document.getElementById('profile-avatar-preview');
+            if (avatarPreview) avatarPreview.src = avatarUrl;
+            
+            // Aggiorna l'header
+            const headerAvatar = document.getElementById('header-user-avatar');
+            if (headerAvatar) headerAvatar.src = avatarUrl;
+
+            // Salva lo stato originario per il tasto Annulla
+            originalProfile.nickname = nickname;
+            originalProfile.avatar_url = avatarUrl;
+
+            // Aggiorna cache locale
+            localStorage.setItem('stoike_nickname', nickname);
+            localStorage.setItem('stoike_avatar', avatarUrl);
+        }
+    } catch (err) {
+        console.error("Errore nel caricamento del profilo utente:", err);
+    }
+}
+
+// Scatena il click sul file chooser nascosto
+function triggerAvatarUpload() {
+    const input = document.getElementById('avatar-input');
+    if (input) input.click();
+}
+
+// Legge il file selezionato e aggiorna la preview (in Base64)
+function previewAvatar(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Validazione dimensioni (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        showStatus('La dimensione della foto supera i 5MB. Seleziona un file più leggero.', 'error');
+        event.target.value = ''; // svuota input
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const base64String = e.target.result;
+        
+        // Aggiorna la preview nel form
+        const preview = document.getElementById('profile-avatar-preview');
+        if (preview) {
+            preview.src = base64String;
+        }
+        
+        // Salva in memoria per il salvataggio
+        uploadedAvatarBase64 = base64String;
+    };
+    reader.readAsDataURL(file);
+}
+
+// Invia i dati al backend per il salvataggio
+async function handleProfileSave(event) {
+    event.preventDefault();
+
+    const nicknameInput = document.getElementById('profile-nickname');
+    const nickname = nicknameInput ? nicknameInput.value.trim() : '';
+    const username = originalProfile.username;
+
+    if (!nickname) {
+        showStatus('Il nickname non può essere vuoto.', 'error');
+        return;
+    }
+
+    const saveBtn = document.getElementById('save-btn');
+    const originalBtnHTML = saveBtn.innerHTML;
+    
+    // Mostra spinner di caricamento
+    if (saveBtn) {
+        saveBtn.disabled = true;
+        saveBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px] align-middle mr-2">sync</span>Salvataggio...';
+        saveBtn.classList.add('opacity-70');
+    }
+
+    try {
+        const response = await fetch('/api/user/profile', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                nickname: nickname,
+                avatar_data: uploadedAvatarBase64
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            // Successo! Aggiorna stato locale e visuale
+            showStatus(window.i18n ? i18n.t('account.success') : 'Profilo salvato con successo!', 'success');
+            
+            // Salva lo stato corrente come nuovo "originale"
+            originalProfile.nickname = data.nickname;
+            if (data.avatar_url) {
+                originalProfile.avatar_url = data.avatar_url;
+            }
+
+            // Aggiorna localStorage
+            localStorage.setItem('stoike_nickname', data.nickname);
+            if (data.avatar_url) {
+                localStorage.setItem('stoike_avatar', data.avatar_url);
+                // Aggiorna header
+                const headerAvatar = document.getElementById('header-user-avatar');
+                if (headerAvatar) headerAvatar.src = data.avatar_url;
+            }
+
+            // Pulisce l'immagine caricata temporanea
+            uploadedAvatarBase64 = null;
+            document.getElementById('avatar-input').value = '';
+
+            // Ricarica la sessione per aggiornare tutto il layout di Stoike
+            if (window.checkAuthState) {
+                window.checkAuthState();
+            }
+        } else {
+            showStatus(data.message || 'Errore durante il salvataggio.', 'error');
+        }
+    } catch (err) {
+        showStatus('Errore di connessione con il server.', 'error');
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = originalBtnHTML;
+            saveBtn.classList.remove('opacity-70');
+        }
+    }
+}
+
+// Ripristina il form allo stato originario salvato
+function resetForm() {
+    // Ripristina input nickname
+    const nicknameInput = document.getElementById('profile-nickname');
+    if (nicknameInput) {
+        nicknameInput.value = originalProfile.nickname;
+    }
+
+    // Ripristina preview avatar
+    const preview = document.getElementById('profile-avatar-preview');
+    if (preview) {
+        preview.src = originalProfile.avatar_url;
+    }
+
+    // Pulisce il file caricato non salvato
+    uploadedAvatarBase64 = null;
+    const fileInput = document.getElementById('avatar-input');
+    if (fileInput) fileInput.value = '';
+
+    // Nasconde o pulisce i messaggi di stato
+    const status = document.getElementById('profile-status');
+    if (status) status.classList.add('hidden');
+}
+
+// Mostra un banner di stato (successo o errore)
+function showStatus(message, type) {
+    const statusBox = document.getElementById('profile-status');
+    if (!statusBox) return;
+
+    statusBox.innerText = message;
+    statusBox.classList.remove('hidden', 'bg-green-500/20', 'border-green-500/30', 'text-green-200', 'bg-red-500/20', 'border-red-500/30', 'text-red-200');
+
+    if (type === 'success') {
+        statusBox.classList.add('bg-green-500/20', 'border-green-500/30', 'text-green-200');
+    } else {
+        statusBox.classList.add('bg-red-500/20', 'border-red-500/30', 'text-red-200');
+    }
+
+    // Scrolla per mostrare il banner se necessario
+    statusBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// Estende le traduzioni di i18n per la pagina account
+function extendI18nTranslations() {
+    if (!window.i18n || !translations) return;
+
+    const accountTranslations = {
+        'account.title': {
+            it: 'Gestione Account',
+            en: 'Account Settings',
+            fr: 'Gestion du Compte',
+            es: 'Gestión de Cuenta',
+            de: 'Kontoeinstellungen'
+        },
+        'account.subtitle': {
+            it: 'Personalizza il tuo profilo di Stoike',
+            en: 'Customize your Stoike profile',
+            fr: 'Personnalisez votre profil Stoike',
+            es: 'Personaliza tu perfil de Stoike',
+            de: 'Personalisiere dein Stoike-Profil'
+        },
+        'account.changePhoto': {
+            it: 'Cambia foto',
+            en: 'Change photo',
+            fr: 'Changer la photo',
+            es: 'Cambiar foto',
+            de: 'Foto ändern'
+        },
+        'account.uploadBtn': {
+            it: 'Carica foto',
+            en: 'Upload photo',
+            fr: 'Charger une photo',
+            es: 'Subir foto',
+            de: 'Foto hochladen'
+        },
+        'account.photoSpecs': {
+            it: 'Formati supportati: PNG, JPG. Max 5MB.',
+            en: 'Supported formats: PNG, JPG. Max 5MB.',
+            fr: 'Formats supportés : PNG, JPG. Max 5 Mo.',
+            es: 'Formatos soportados: PNG, JPG. Máx. 5MB.',
+            de: 'Unterstützte Formate: PNG, JPG. Max. 5MB.'
+        },
+        'account.username': {
+            it: 'Username',
+            en: 'Username',
+            fr: "Nom d'utilisateur",
+            es: 'Usuario',
+            de: 'Benutzername'
+        },
+        'account.usernameImmutable': {
+            it: "L'username è immutabile e serve per l'autenticazione.",
+            en: 'The username is immutable and is used for authentication.',
+            fr: "Le nom d'utilisateur est immuable et sert à l'authentification.",
+            es: 'El nombre de usuario es inmutable y se usa para la autenticación.',
+            de: 'Der Benutzername ist unveränderlich und dient der Authentifizierung.'
+        },
+        'account.nickname': {
+            it: 'Nickname Personalizzato',
+            en: 'Custom Nickname',
+            fr: 'Pseudonyme Personnalisé',
+            es: 'Apodo Personalizado',
+            de: 'Benutzerdefinierter Spitzname'
+        },
+        'account.nicknamePlaceholder': {
+            it: 'Es. MikeTheCritic',
+            en: 'e.g. MikeTheCritic',
+            fr: 'Ex. MikeTheCritic',
+            es: 'Ej. MikeTheCritic',
+            de: 'z.B. MikeTheCritic'
+        },
+        'account.nicknameSpecs': {
+            it: 'Il tuo nome pubblico visibile nei forum e nelle recensioni. Deve essere unico.',
+            en: 'Your public name visible in forums and reviews. Must be unique.',
+            fr: 'Votre nom public visible dans les forums et les critiques. Doit être unique.',
+            es: 'Tu nombre público visible en foros y reseñas. Debe ser único.',
+            de: 'Dein öffentlicher Name in Foren und Bewertungen. Muss einzigartig sein.'
+        },
+        'account.save': {
+            it: 'Salva',
+            en: 'Save',
+            fr: 'Enregistrer',
+            es: 'Guardar',
+            de: 'Speichern'
+        },
+        'account.cancel': {
+            it: 'Annulla',
+            en: 'Cancel',
+            fr: 'Annuler',
+            es: 'Cancelar',
+            de: 'Abbrechen'
+        },
+        'account.goBack': {
+            it: 'Torna Indietro',
+            en: 'Go Back',
+            fr: 'Retour',
+            es: 'Volver',
+            de: 'Zurück'
+        },
+        'account.success': {
+            it: 'Profilo salvato con successo!',
+            en: 'Profile saved successfully!',
+            fr: 'Profil enregistré avec succès !',
+            es: '¡Perfil guardado con éxito!',
+            de: 'Profil erfolgreich gespeichert!'
+        }
+    };
+
+    // Unisci i dizionari
+    Object.assign(translations, accountTranslations);
+}

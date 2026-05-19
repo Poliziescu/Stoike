@@ -47,24 +47,107 @@ function mapTMDBMovie(m) {
 // Auth State Manager
 let currentAuthMode = 'login';
 
-function checkAuthState() {
+async function checkAuthState() {
     const u = localStorage.getItem('stoike_user');
     const ab = document.getElementById('auth-btn');
     const ui = document.getElementById('user-info');
+    
+    // Elementi dell'avatar nell'header (in alto a destra)
+    const headerAvatarImg = document.querySelector('img[alt="User profile avatar"]') || document.getElementById('header-user-avatar');
+    
+    // Gestione visuale e interattiva del pulsante avatar nell'header
+    if (headerAvatarImg) {
+        const avatarContainer = headerAvatarImg.parentElement;
+        if (avatarContainer) {
+            avatarContainer.style.cursor = 'pointer';
+            
+            // Rimuove eventuali listener precedenti clonando l'elemento per evitare duplicazioni
+            const newContainer = avatarContainer.cloneNode(true);
+            if (avatarContainer.parentNode) {
+                avatarContainer.parentNode.replaceChild(newContainer, avatarContainer);
+            }
+            
+            newContainer.addEventListener('click', (e) => {
+                e.preventDefault();
+                const loggedInUser = localStorage.getItem('stoike_user');
+                if (loggedInUser) {
+                    window.location.href = '/account.html';
+                } else {
+                    openAuthModal();
+                }
+            });
+        }
+    }
+
     if (u) {
         if (ab) ab.classList.add('hidden');
         if (ui) ui.classList.remove('hidden');
+        
+        // Legge nickname ed avatar dalla cache locale per caricamento immediato (senza latenza)
+        const cachedNickname = localStorage.getItem('stoike_nickname');
+        const cachedAvatar = localStorage.getItem('stoike_avatar');
+        
         const us = document.getElementById('current-username');
-        if (us) us.innerText = u;
+        if (us) {
+            us.innerText = cachedNickname || u;
+        }
+        
+        const headerAvatar = document.querySelector('img[alt="User profile avatar"]') || document.getElementById('header-user-avatar');
+        if (headerAvatar && cachedAvatar) {
+            headerAvatar.src = cachedAvatar;
+        }
+
+        // Recupera in parallelo dal server per aggiornare la cache ed evitare sfasamenti
+        fetch(`/api/user/profile?username=${encodeURIComponent(u)}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.success) {
+                    const latestNickname = data.nickname || '';
+                    const latestAvatar = data.avatar_url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3';
+                    
+                    // Se ci sono variazioni rispetto alla cache, aggiorna il DOM
+                    if (latestNickname !== cachedNickname || latestAvatar !== cachedAvatar) {
+                        localStorage.setItem('stoike_nickname', latestNickname);
+                        localStorage.setItem('stoike_avatar', latestAvatar);
+                        
+                        if (us) us.innerText = latestNickname || u;
+                        
+                        const currentHeaderAvatar = document.querySelector('img[alt="User profile avatar"]') || document.getElementById('header-user-avatar');
+                        if (currentHeaderAvatar) {
+                            currentHeaderAvatar.src = latestAvatar;
+                        }
+
+                        // Se ci troviamo nella pagina account stessa, aggiorna anche la preview locale
+                        const accountPreview = document.getElementById('profile-avatar-preview');
+                        if (accountPreview && (typeof uploadedAvatarBase64 === 'undefined' || !uploadedAvatarBase64)) {
+                            accountPreview.src = latestAvatar;
+                        }
+                        const accountNickname = document.getElementById('profile-nickname');
+                        if (accountNickname && document.activeElement !== accountNickname) {
+                            accountNickname.value = latestNickname;
+                        }
+                    }
+                }
+            })
+            .catch(err => console.warn("Impossibile recuperare il profilo aggiornato dal server:", err));
+            
     } else {
         if (ab) ab.classList.remove('hidden');
         if (ui) ui.classList.add('hidden');
+        
+        // Ripristina l'avatar di default se l'utente si disconnette
+        const headerAvatar = document.querySelector('img[alt="User profile avatar"]') || document.getElementById('header-user-avatar');
+        if (headerAvatar) {
+            headerAvatar.src = 'https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3';
+        }
     }
 }
 
 function logoutUser() {
     localStorage.removeItem('stoike_user');
     localStorage.removeItem('stoike_role');
+    localStorage.removeItem('stoike_nickname');
+    localStorage.removeItem('stoike_avatar');
     checkAuthState();
     // Refresh page in case of admin access to update UI controls
     window.location.reload();
@@ -616,10 +699,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     if (menuToggle) {
-        menuToggle.addEventListener('mouseenter', openDrawer);
-        menuToggle.addEventListener('mouseleave', () => {
-            closeTimeout = setTimeout(closeDrawer, 800);
-        });
         menuToggle.addEventListener('click', (e) => {
             e.stopPropagation();
             if (sidebar && sidebar.classList.contains('translate-x-0')) {

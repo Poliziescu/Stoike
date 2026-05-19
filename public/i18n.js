@@ -58,6 +58,8 @@ const translations = {
     'home.noTitle':         { it: 'Senza Titolo', en: 'Untitled', fr: 'Sans titre', es: 'Sin título', de: 'Ohne Titel' },
     'home.noSynopsis':      { it: 'Nessuna trama disponibile per questo capolavoro.', en: 'No synopsis available for this masterpiece.', fr: "Aucun synopsis disponible pour ce chef-d'œuvre.", es: 'No hay sinopsis disponible para esta obra maestra.', de: 'Keine Zusammenfassung für dieses Meisterwerk verfügbar.' },
     'home.watchBtn':        { it: 'Guarda Ora', en: 'Watch Now', fr: 'Regarder', es: 'Ver Ahora', de: 'Jetzt ansehen' },
+    'home.heroBadge':       { it: 'Ultime Uscite', en: 'Latest Releases', fr: 'Dernières Sorties', es: 'Últimos Estrenos', de: 'Neuerscheinungen' },
+    'home.watchTrailer':    { it: 'Guarda Trailer', en: 'Watch Trailer', fr: 'Regarder la Bande-annonce', es: 'Ver Tráiler', de: 'Trailer ansehen' },
 
     // ── Movie Detail ──
     'movie.loading':         { it: 'Caricamento...', en: 'Loading...', fr: 'Chargement...', es: 'Cargando...', de: 'Laden...' },
@@ -65,6 +67,8 @@ const translations = {
     'movie.synopsis':        { it: 'Trama', en: 'Synopsis', fr: 'Synopsis', es: 'Sinopsis', de: 'Handlung' },
     'movie.cast':            { it: 'Cast Principale', en: 'Main Cast', fr: 'Distribution', es: 'Reparto Principal', de: 'Hauptbesetzung' },
     'movie.franchise':       { it: 'Prequel & Sequel (Franchise)', en: 'Prequel & Sequel (Franchise)', fr: 'Préquelle & Suite (Franchise)', es: 'Precuela y Secuela (Franquicia)', de: 'Prequel & Sequel (Franchise)' },
+    'movie.prequelLabel':    { it: 'Prequel', en: 'Prequel', fr: 'Préquelle', es: 'Precuela', de: 'Prequel' },
+    'movie.sequelLabel':     { it: 'Sequel', en: 'Sequel', fr: 'Suite', es: 'Secuela', de: 'Fortsetzung' },
     'movie.similar':         { it: 'Titoli Simili Suggeriti', en: 'Similar Titles', fr: 'Titres Similaires', es: 'Títulos Similares', de: 'Ähnliche Titel' },
     'movie.trailer':         { it: 'Trailer Ufficiale', en: 'Official Trailer', fr: 'Bande-annonce Officielle', es: 'Tráiler Oficial', de: 'Offizieller Trailer' },
     'movie.errorLoading':    { it: 'Errore di caricamento', en: 'Loading error', fr: 'Erreur de chargement', es: 'Error de carga', de: 'Ladefehler' },

@@ -39,3 +39,7 @@ __pycache__/
 *.pyc
 venv/
 .venv/
+
+# Uploads utente e database locale (esclusi da git)
+public/uploads/
+user_profiles.json
