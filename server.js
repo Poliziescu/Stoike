@@ -442,14 +442,6 @@ app.post('/api/report-bug', async (req, res) => {
     const githubOwner = process.env.GITHUB_OWNER;
     const githubRepo = process.env.GITHUB_REPO;
 
-    if (!githubToken || !githubOwner || !githubRepo) {
-        console.error("❌ [GitHub API] Configurazione incompleta in .env (mancano TOKEN/OWNER/REPO)");
-        return res.status(500).json({
-            success: false,
-            message: 'Configurazione del server incompleta (GitHub API non configurata).'
-        });
-    }
-
     const issueBody = `# Bug Report
 
 ## Titolo
@@ -463,6 +455,53 @@ ${description}
 - **Pagina corrente**: ${currentPage}
 - **Browser Info**: ${browserInfo}
 `;
+
+    // Funzione helper per salvataggio locale di fallback
+    const saveLocalFallback = () => {
+        try {
+            const localBugsPath = path.join(__dirname, 'bug_reports.json');
+            let bugs = [];
+            if (fs.existsSync(localBugsPath)) {
+                try {
+                    bugs = JSON.parse(fs.readFileSync(localBugsPath, 'utf8'));
+                } catch (e) {
+                    bugs = [];
+                }
+            }
+            const newBug = {
+                id: Date.now(),
+                title: `[Bug Report] ${title}`,
+                body: issueBody,
+                created_at: new Date().toISOString(),
+                status: 'open_local'
+            };
+            bugs.push(newBug);
+            fs.writeFileSync(localBugsPath, JSON.stringify(bugs, null, 2), 'utf8');
+            console.log(`💾 [GitHub API Fallback] Segnalazione bug salvata con successo in locale: ${localBugsPath}`);
+            return true;
+        } catch (localErr) {
+            console.error("❌ [GitHub API Fallback] Errore nel salvataggio locale:", localErr.message);
+            return false;
+        }
+    };
+
+    // Se la configurazione di GitHub manca o è a valore segnaposto (es. "your_github_...")
+    const isPlaceholder = (val) => !val || val.includes('your_github_');
+    if (isPlaceholder(githubToken) || isPlaceholder(githubOwner) || isPlaceholder(githubRepo)) {
+        console.warn("⚠️ [GitHub API] Configurazione incompleta o con segnaposto in .env. Utilizzo del salvataggio locale di fallback.");
+        if (saveLocalFallback()) {
+            return res.json({
+                success: true,
+                message: 'Segnalazione salvata localmente (GitHub API non configurata).',
+                issue_url: '#'
+            });
+        } else {
+            return res.status(500).json({
+                success: false,
+                message: 'Errore di configurazione e salvataggio locale fallito.'
+            });
+        }
+    }
 
     console.log(`🚀 [GitHub API] Creazione issue nel repo ${githubOwner}/${githubRepo} per bug: '${title}'...`);
     try {
@@ -491,15 +530,33 @@ ${description}
                 issue_url: response.data.html_url
             });
         } else {
-            console.error(`❌ [GitHub API] Creazione fallita:`, response.data);
-            return res.status(502).json({
-                success: false,
-                message: `Errore risposta GitHub API. Stato: ${response.status}`
-            });
+            console.error(`❌ [GitHub API] Creazione fallita, risposta:`, response.data);
+            console.log(`⚠️ Tentativo di salvataggio locale di fallback...`);
+            if (saveLocalFallback()) {
+                return res.json({
+                    success: true,
+                    message: 'Segnalazione salvata localmente (GitHub API non disponibile).',
+                    issue_url: '#'
+                });
+            } else {
+                return res.status(502).json({
+                    success: false,
+                    message: `Errore risposta GitHub API. Stato: ${response.status}`
+                });
+            }
         }
     } catch (error) {
         console.error(`❌ [GitHub API] Eccezione di rete:`, error.message);
-        return res.status(500).json({ success: false, message: 'Errore di connessione con le API di GitHub.' });
+        console.log(`⚠️ Tentativo di salvataggio locale di fallback...`);
+        if (saveLocalFallback()) {
+            return res.json({
+                success: true,
+                message: 'Segnalazione salvata localmente (GitHub offline/non autorizzato).',
+                issue_url: '#'
+            });
+        } else {
+            return res.status(500).json({ success: false, message: 'Errore di connessione con le API di GitHub.' });
+        }
     }
 });
 

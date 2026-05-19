@@ -8,3 +8,6 @@
 - [x] Implementare funzione per click su similar movies
 - [x] Implementare Forum in dettaglio del film
 - test push
+- [x] Bug da pagina dettaglio film non si vede ACTORS ma AWARDS. Il collegamento non funziona
+- [x] bug su creazione ticket git
+- ricerca attori in like come ricerca princpale dei film
