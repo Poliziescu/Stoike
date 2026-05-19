@@ -3,10 +3,10 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Stoike - Cerca Attore &amp; Cast</title>
+    <title>Stoike - Promemoria Uscita</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <script src="tailwind.config.js"></script>
     <link href="style.css" rel="stylesheet" />
 </head>
@@ -25,7 +25,7 @@
             <div class="hidden md:flex items-center gap-md">
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/index.html" data-i18n="nav.movies">Movies</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/genres.html" data-i18n="nav.genres">Genres</a>
-                <a class="text-primary-container font-bold border-b-2 border-primary-container pb-1 hover:bg-white/5 transition-all duration-300 opacity-80 scale-95 transition-transform font-headline-sm text-headline-sm" href="/actors.html" data-i18n="nav.actors">Actors</a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/actors.html" data-i18n="nav.actors">Actors</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="#" data-i18n="nav.community">Community</a>
             </div>
             <div class="flex items-center gap-sm">
@@ -55,6 +55,8 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Language Selector Dropdown -->
                 <div class="relative" id="lang-selector-container">
                     <button id="lang-dropdown-btn" class="flex items-center justify-center bg-black/60 border border-outline-variant/30 rounded-lg w-10 h-10 hover:bg-white/5 focus:border-primary-container focus:ring-0 outline-none cursor-pointer transition-colors">
                         <img id="current-lang-flag" src="https://flagcdn.com/w20/it.png" alt="IT" class="w-6 h-auto rounded-sm">
@@ -67,16 +69,19 @@
                         <button onclick="changeLanguage('de')" class="flex items-center justify-center w-full py-3 hover:bg-white/10 transition-colors"><img src="https://flagcdn.com/w20/de.png" alt="DE" class="w-6 h-auto rounded-sm"></button>
                     </div>
                 </div>
-
+                
+                <!-- Navbar Actions -->
                 <button class="p-2 hover:bg-white/5 rounded-full transition-all" title="Notifiche">
                     <span class="material-symbols-outlined text-primary-container" data-icon="notifications">notifications</span>
                 </button>
-                <button onclick="window.location.href='/reminders.html'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Avvisi di Uscita">
+                <button onclick="window.location.href='/reminders.html'" class="p-2 hover:bg-white/5 rounded-full transition-all bg-white/10" title="Avvisi di Uscita">
                     <span class="material-symbols-outlined text-primary-container" data-icon="calendar_month">calendar_month</span>
                 </button>
                 <button class="p-2 hover:bg-white/5 rounded-full transition-all">
                     <span class="material-symbols-outlined text-primary-container" data-icon="bookmark">bookmark</span>
                 </button>
+                
+                <!-- Avatar -->
                 <div class="w-10 h-10 rounded-full overflow-hidden ml-2 border border-outline-variant/20">
                     <img alt="User profile avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3" />
                 </div>
@@ -137,116 +142,27 @@
         </aside>
 
         <!-- Main Content Canvas -->
-        <main id="main-content" class="flex-1 px-margin-mobile pb-margin-mobile pt-6 md:px-margin-desktop md:pb-margin-desktop md:pt-10 overflow-y-auto">
-            <!-- Dedicated Actor Search Bar Section -->
-            <section class="flex flex-col gap-6 mb-10">
-                <h1 class="font-display-md text-display-md text-white font-bold tracking-tight">Cerca Attore &amp; Cast</h1>
-                <div class="flex flex-col sm:flex-row gap-3 max-w-2xl">
-                    <input id="actor-search-input" class="flex-1 bg-black/60 border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all font-body-md text-body-md outline-none" placeholder="Inserisci il nome di un attore o attrice..." type="text" autocomplete="off" />
-                    <button id="actor-search-btn" class="px-6 py-3 bg-primary-container text-black font-label-md rounded-lg hover:bg-primary transition-all flex items-center justify-center gap-2 font-medium">
-                        <span class="material-symbols-outlined text-[20px]">search</span>
-                        Cerca
-                    </button>
-                </div>
-            </section>
+        <main id="main-content" class="flex-1 p-margin-mobile md:p-margin-desktop overflow-y-auto">
+        <div class="mb-6">
+            <h1 class="font-display-lg-mobile md:font-display-lg text-white mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined text-[36px] text-primary-container">calendar_month</span>
+                <span>Promemoria Uscita</span>
+            </h1>
+            <p class="text-on-surface-variant font-body-md">Ricevi avvisi e visualizza quanti giorni mancano alla data di uscita dei tuoi film più attesi.</p>
+        </div>
 
-            <!-- Popular / Trending Actors Grid (visible by default) -->
-            <section id="popular-actors-section" class="mb-12">
-                <h2 class="font-headline-md text-headline-md text-white font-bold tracking-tight mb-8 flex items-center gap-2.5">
-                    <span class="material-symbols-outlined text-primary-container text-[24px]">trending_up</span>
-                    Attori Popolari
-                </h2>
-                <div id="popular-actors-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-md md:gap-lg">
-                    <div class="col-span-full text-center text-on-surface-variant py-12">
-                        <span class="material-symbols-outlined animate-spin text-[36px] align-middle mr-2 text-primary-container">sync</span>
-                        Caricamento attori popolari...
-                    </div>
-                </div>
-            </section>
+        <div id="not-logged-in-msg" class="hidden py-12 text-center text-on-surface-variant bg-surface-container/30 border border-outline-variant/10 rounded-2xl">
+            <span class="material-symbols-outlined text-[48px] mb-4 opacity-50">lock</span>
+            <p class="font-headline-sm">Devi accedere per vedere i tuoi film salvati.</p>
+            <button onclick="openAuthModal()" class="mt-4 px-6 py-2 bg-primary-container text-black font-label-md rounded hover:bg-primary transition-colors inline-flex items-center gap-2">
+                Accedi Ora
+            </button>
+        </div>
 
-            <!-- Loading Indicator -->
-            <div id="actor-loading" class="hidden text-center text-on-surface-variant py-12">
-                <span class="material-symbols-outlined animate-spin text-[36px] align-middle mr-2 text-primary-container">sync</span>
-                Caricamento informazioni in corso...
-            </div>
-
-            <!-- Error Banner (Custom requested error warning) -->
-            <div id="actor-error-message" class="hidden bg-red-500/10 border border-red-500/30 text-red-200 p-6 rounded-2xl text-center max-w-2xl mx-auto shadow-2xl flex items-center justify-center gap-3">
-                <span class="material-symbols-outlined text-red-400 text-[28px]">error</span>
-                <span class="font-headline-sm text-headline-sm font-semibold tracking-wide">Ci scusiamo non abbiamo trovato informazioni su questa persona</span>
-            </div>
-
-            <!-- Actor Biography Card (Premium Glassmorphic layout) -->
-            <div id="actor-profile-card" class="hidden flex-col lg:flex-row gap-8 lg:gap-12 mb-12 p-6 md:p-8 glass-panel border border-white/10 rounded-2xl shadow-2xl relative overflow-hidden">
-                <div class="absolute -right-20 -top-20 w-80 h-80 bg-primary-container/5 rounded-full blur-3xl pointer-events-none"></div>
-                <!-- Actor Portrait -->
-                <div class="flex-shrink-0 w-full max-w-[220px] mx-auto lg:mx-0">
-                    <img id="actor-photo" alt="" class="w-full rounded-xl shadow-2xl border border-white/10 aspect-[2/3] object-cover" />
-                </div>
-                <!-- Details & Bio -->
-                <div class="flex-grow min-w-0 flex flex-col justify-between">
-                    <div>
-                        <h2 id="actor-name" class="font-display-lg-mobile text-display-lg-mobile md:text-[2.5rem] md:leading-tight text-white mb-4 font-bold tracking-tight"></h2>
-                        <!-- Meta facts -->
-                        <div class="flex flex-wrap gap-x-6 gap-y-2 mb-6 text-on-surface-variant font-label-md text-label-md border-b border-outline-variant/10 pb-4">
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary-container text-[18px]">cake</span>
-                                <span id="actor-birthday"></span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary-container text-[18px]">location_on</span>
-                                <span id="actor-birthplace" class="truncate max-w-xs md:max-w-md"></span>
-                            </div>
-                        </div>
-                        <!-- Biography -->
-                        <div class="mb-4">
-                            <h3 class="font-headline-sm text-headline-sm text-white mb-2.5 flex items-center gap-2">
-                                <span class="material-symbols-outlined text-primary-container text-[20px]">person_pin</span>
-                                Biografia
-                            </h3>
-                            <p id="actor-biography" class="font-body-md text-body-md text-on-surface-variant leading-relaxed text-justify max-h-[300px] overflow-y-auto pr-2"></p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Actor Filmography / Credits Section -->
-            <div id="actor-movies-section" class="hidden">
-                <h2 id="filmography-heading" class="font-headline-md text-headline-md text-white font-bold tracking-tight mb-8 flex items-center gap-2.5">
-                    <span class="material-symbols-outlined text-primary-container text-[24px]">movie_filter</span>
-                    Filmografia di <span id="filmography-actor-name" class="text-primary-container font-semibold"></span>
-                </h2>
-                <div id="movies-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-md md:gap-lg">
-                    <!-- Movie credits cards injected dynamically -->
-                </div>
-            </div>
-        </main>
+        <div id="saved-movies-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-gutter">
+            <!-- Saved movies populated here -->
+    </main>
     </div>
-
-    <!-- BottomNavBar -->
-    <nav class="md:hidden flex justify-around items-center h-16 pb-safe w-full fixed bottom-0 z-50 rounded-t-xl bg-surface-container-lowest/90 backdrop-blur-2xl border-t border-outline-variant/20 shadow-xl text-primary-container font-label-sm text-label-sm">
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/index.html">
-            <span class="material-symbols-outlined">home</span>
-            <span data-i18n="bottomNav.home">Home</span>
-        </a>
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/list.html?type=top_rated">
-            <span class="material-symbols-outlined">search</span>
-            <span data-i18n="bottomNav.search">Cerca</span>
-        </a>
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="#">
-            <span class="material-symbols-outlined">movie_filter</span>
-            <span data-i18n="bottomNav.watchlist">Watchlist</span>
-        </a>
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="#">
-            <span class="material-symbols-outlined">person</span>
-            <span data-i18n="bottomNav.profile">Profilo</span>
-        </a>
-    </nav>
-
-    <!-- Support FAB Button -->
-    <button id="support-fab" class="fixed bottom-24 md:bottom-8 right-6 z-50 w-14 h-14 rounded-full bg-primary-container text-on-primary-container shadow-lg hover:bg-primary-fixed-dim transition-all duration-300 flex items-center justify-center hover:scale-110 active:scale-95" title="Segnala un problema">
-        <span class="material-symbols-outlined text-[28px]">support_agent</span>
-    </button>
 
     <!-- Auth Modal -->
     <div id="auth-modal" class="hidden fixed inset-0 z-[100] flex items-center justify-center">
@@ -279,33 +195,171 @@
         </div>
     </div>
 
-    <!-- Support Modal -->
-    <div id="support-modal" class="fixed inset-0 z-[100] hidden items-center justify-center">
-        <div id="support-backdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
-        <div class="relative w-[90%] max-w-lg mx-auto glass-panel border border-white/10 rounded-xl p-8 shadow-2xl">
-            <button id="support-close" class="absolute top-4 right-4 text-on-surface-variant hover:text-white transition-colors">
-                <span class="material-symbols-outlined">close</span>
-            </button>
-            <h2 class="font-headline-sm text-headline-sm text-primary-container mb-2 flex items-center gap-2">
-                <span class="material-symbols-outlined material-fill-1">bug_report</span>
-                <span data-i18n="support.title">Segnala un problema</span>
-            </h2>
-            <p class="text-on-surface-variant font-label-sm text-label-sm mb-6" data-i18n="support.subtitle">Descrivici il problema riscontrato e lo risolveremo al più presto.</p>
-            <form id="support-form" class="flex flex-col gap-4">
-                <input id="support-title" type="text" required placeholder="Titolo del problema (breve e chiaro)" data-i18n-placeholder="support.titleInput" class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md" />
-                <input id="support-email" type="email" placeholder="La tua email per aggiornamenti (opzionale)" data-i18n-placeholder="support.emailInput" class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md" />
-                <textarea id="support-message" required rows="5" placeholder="Descrivi il problema nel dettaglio..." data-i18n-placeholder="support.messageInput" class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md resize-none"></textarea>
-                <div id="support-status" class="hidden px-4 py-3 rounded-lg border font-body-md text-body-md transition-all duration-300"></div>
-                <button type="submit" id="support-submit" class="px-6 py-3 bg-primary-container text-black font-label-md text-label-md rounded-lg hover:bg-primary-fixed-dim transition-colors flex items-center justify-center gap-2">
-                    <span class="material-symbols-outlined text-[20px]">send</span> <span data-i18n="support.submit">Invia segnalazione</span>
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Layout & Component Logic -->
     <script src="i18n.js"></script>
     <script src="common.js"></script>
-    <script src="actors.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = localStorage.getItem('stoike_user');
+            const container = document.getElementById('saved-movies-container');
+            const notLoggedMsg = document.getElementById('not-logged-in-msg');
+
+            if (!user) {
+                notLoggedMsg.classList.remove('hidden');
+                container.classList.add('hidden');
+                return;
+            }
+
+            loadSavedMovies();
+        });
+
+        async function loadSavedMovies() {
+            const user = localStorage.getItem('stoike_user');
+            const container = document.getElementById('saved-movies-container');
+            
+            let saved = [];
+            try {
+                // Tenta di caricare dal database backend
+                const resp = await fetch('/api/reminders/' + encodeURIComponent(user));
+                if (resp.ok) {
+                    saved = await resp.json();
+                } else {
+                    throw new Error("Errore risposta server");
+                }
+            } catch(e) {
+                console.warn("Impossibile caricare dal database. Caricamento in fallback da localStorage:", e);
+                // Fallback a localStorage
+                const savedRaw = localStorage.getItem('stoike_saved_movies_' + user);
+                if (savedRaw) {
+                    try {
+                        saved = JSON.parse(savedRaw);
+                    } catch(err){}
+                }
+            }
+
+            if (saved.length === 0) {
+                container.innerHTML = '<div class="col-span-full py-12 text-center text-on-surface-variant">Nessun film salvato al momento. Clicca sull\'icona del calendario in un film per salvarlo!</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            for (const movie of saved) {
+                const id = movie.tmdb_movie_id || movie.id;
+                const title = movie.title || movie.movie_title;
+                const posterUrl = movie.poster_url;
+                
+                const card = document.createElement('div');
+                card.className = "flex gap-4 bg-surface-container/30 border border-outline-variant/10 rounded-xl overflow-hidden p-4 relative hover:border-primary-container/30 transition-colors";
+                
+                let releaseDateMsg = 'Caricamento...';
+                
+                card.innerHTML = `
+                    <img src="${posterUrl}" class="w-24 h-36 object-cover rounded shadow cursor-pointer" onclick="window.location.href='/movie.html?id=${id}'" onerror="this.src='https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover'" />
+                    <div class="flex-1 flex flex-col min-w-0">
+                        <h3 class="font-title-md text-white font-bold truncate cursor-pointer hover:text-primary-container" onclick="window.location.href='/movie.html?id=${id}'">${title}</h3>
+                        <p class="text-on-surface-variant font-label-sm mt-1" id="release-info-${id}">${releaseDateMsg}</p>
+                        
+                        <div class="mt-auto pt-4 flex justify-between items-center">
+                            <button class="text-red-400 hover:text-red-300 font-label-sm flex items-center gap-1 transition-colors" onclick="removeSavedMovie(${id}, this)">
+                                <span class="material-symbols-outlined text-[16px]">delete</span> Rimuovi
+                            </button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+                
+                // Richiesta asincrona info di uscita
+                fetchReleaseInfo(id).then(info => {
+                    const infoEl = document.getElementById('release-info-' + id);
+                    if (infoEl) infoEl.innerHTML = info;
+                });
+            }
+        }
+
+        async function fetchReleaseInfo(id) {
+            try {
+                const res = await fetchTMDB('/movie/' + id + '/release_dates');
+                if (!res || !res.results) return 'Data di uscita sconosciuta';
+                
+                const lang = (window.i18n && window.i18n.getCurrentLang) ? window.i18n.getCurrentLang() : 'it';
+                const flagMap = { 'it': 'IT', 'en': 'US', 'fr': 'FR', 'es': 'ES', 'de': 'DE' };
+                const isoRegion = flagMap[lang] || 'US';
+                
+                const regionData = res.results.find(r => r.iso_3166_1 === isoRegion);
+                let dateStr = null;
+                
+                if (regionData && regionData.release_dates.length > 0) {
+                    const theatrical = regionData.release_dates.find(d => d.type === 3);
+                    if (theatrical) {
+                        dateStr = theatrical.release_date;
+                    } else {
+                        dateStr = regionData.release_dates[0].release_date;
+                    }
+                } else {
+                    const usData = res.results.find(r => r.iso_3166_1 === 'US');
+                    if (usData && usData.release_dates.length > 0) {
+                        dateStr = usData.release_dates[0].release_date;
+                    } else if (res.results.length > 0 && res.results[0].release_dates.length > 0) {
+                        dateStr = res.results[0].release_dates[0].release_date;
+                    }
+                }
+                
+                if (dateStr) {
+                    const releaseDate = new Date(dateStr);
+                    const now = new Date();
+                    const diffTime = releaseDate - now;
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diffDays > 0) {
+                        return '<span class="text-yellow-400 font-bold">Mancano ' + diffDays + ' giorni</span> all\'uscita (' + releaseDate.toLocaleDateString() + ')';
+                    } else if (diffDays === 0) {
+                        return '<span class="text-green-400 font-bold">Esce OGGI!</span>';
+                    } else {
+                        return '<span class="text-gray-400">Già uscito il ' + releaseDate.toLocaleDateString() + '</span>';
+                    }
+                }
+                
+                return 'Data di uscita sconosciuta';
+            } catch (e) {
+                return 'Errore nel caricamento dati';
+            }
+        }
+
+        window.removeSavedMovie = async function(id, btnEl) {
+            const user = localStorage.getItem('stoike_user');
+            if (!user) return;
+            
+            try {
+                // Cancella dal database tramite backend
+                const resp = await fetch(`/api/reminders/${encodeURIComponent(user)}/${id}`, {
+                    method: 'DELETE'
+                });
+                if (!resp.ok) {
+                    console.error("Errore rimozione dal database");
+                }
+            } catch(e) {
+                console.error("Errore richiesta di rimozione:", e);
+            }
+            
+            // Sync/Rimuovi anche da localStorage in fallback
+            const key = 'stoike_saved_movies_' + user;
+            let saved = [];
+            const savedRaw = localStorage.getItem(key);
+            if (savedRaw) {
+                try { saved = JSON.parse(savedRaw); } catch(e){}
+            }
+            
+            saved = saved.filter(m => (m.id != id && m.tmdb_movie_id != id));
+            localStorage.setItem(key, JSON.stringify(saved));
+            
+            const card = btnEl.closest('.flex.gap-4');
+            if (card) {
+                card.remove();
+                showStoikeToast("Promemoria rimosso con successo.", "info");
+                if (document.getElementById('saved-movies-container').children.length === 0) {
+                    loadSavedMovies();
+                }
+            }
+        };
+    </script>
 </body>
 </html>

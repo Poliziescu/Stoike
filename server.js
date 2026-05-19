@@ -89,6 +89,13 @@ app.get('/list.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'list.html'));
 });
 
+// Reminders
+app.get('/reminders', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'reminders.html'));
+});
+app.get('/reminders.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'reminders.html'));
+});
 // Gestione Profilo / Account
 app.get('/account', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'account.html'));
@@ -97,6 +104,13 @@ app.get('/account.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'account.html'));
 });
 
+// Reminders
+app.get('/reminders', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'reminders.html'));
+});
+app.get('/reminders.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'reminders.html'));
+});
 
 // Serve le risorse statiche (JS, CSS, immagini) della cartella public
 app.use(express.static(path.join(__dirname, 'public')));
@@ -294,7 +308,7 @@ app.get('/api/user/profile', async (req, res) => {
 app.post('/api/user/profile', async (req, res) => {
     const { username, nickname, avatar_data } = req.body || {};
     console.log(`👤 [Profile Update] Richiesta aggiornamento profilo per: '${username}', nickname: '${nickname}'`);
-    
+
     if (!username) {
         return res.status(400).json({ success: false, message: 'Username obbligatorio.' });
     }
@@ -321,7 +335,7 @@ app.post('/api/user/profile', async (req, res) => {
             console.warn(`⚠️ [Profile Update] Errore unicità nickname Supabase. Fallback locale:`, error.message);
             // Fallback locale per verificare l'unicità
             const localProfiles = getLocalProfiles();
-            const exists = Object.keys(localProfiles).some(u => 
+            const exists = Object.keys(localProfiles).some(u =>
                 u !== username && localProfiles[u].nickname && localProfiles[u].nickname.toLowerCase() === finalNickname.toLowerCase()
             );
             if (exists) {
@@ -342,10 +356,10 @@ app.post('/api/user/profile', async (req, res) => {
             const ext = matches[1];
             const base64Data = matches[2];
             const buffer = Buffer.from(base64Data, 'base64');
-            
+
             const filename = `avatar_${username.toLowerCase()}_${Date.now()}.${ext}`;
             const filepath = path.join(uploadsDir, filename);
-            
+
             fs.writeFileSync(filepath, buffer);
             avatarUrl = `/uploads/${filename}`;
             console.log(`💾 [Profile Update] Avatar salvato localmente: ${avatarUrl}`);
@@ -610,6 +624,129 @@ app.delete('/api/forum/:post_id', async (req, res) => {
 
 
 // =========================================
+// MOVIE REMINDERS API (Supabase integration)
+// =========================================
+
+// Recupera tutti i promemoria di uscita salvati per un utente
+app.get('/api/reminders/:username', async (req, res) => {
+    const username = req.params.username;
+    console.log(`📅 [Reminders Get] Richiesta promemoria per utente: ${username}`);
+
+    try {
+        const response = await axios.get(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+            params: {
+                username: `eq.${username}`,
+                order: 'created_at.desc',
+                select: '*'
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`📅 [Reminders Get] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Reminders Get] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+// Aggiunge un nuovo promemoria di uscita per un film
+app.post('/api/reminders', async (req, res) => {
+    const { username, tmdb_movie_id, title, poster_url, release_date, email } = req.body || {};
+    console.log(`📅 [Reminder Insert] Utente '${username}' salva avviso per film '${title}' (ID: ${tmdb_movie_id})`);
+
+    if (!username || !tmdb_movie_id) {
+        return res.status(400).json({ success: false, message: 'Dati incompleti.' });
+    }
+
+    let finalTitle = title;
+    let finalPosterUrl = poster_url;
+    let finalReleaseDate = release_date;
+
+    // Recupera informazioni mancanti o incomplete da TMDb
+    try {
+        console.log(`🔍 [TMDb Lookup] Recupero dettagli film da TMDb per ID ${tmdb_movie_id}...`);
+        const tmdbRes = await axios.get(`${TMDB_BASE_URL}/movie/${tmdb_movie_id}`, {
+            params: { api_key: TMDB_API_KEY, language: 'it-IT' },
+            timeout: 5000
+        });
+        if (tmdbRes.data) {
+            if (!finalTitle || finalTitle === 'undefined' || finalTitle === '') {
+                finalTitle = tmdbRes.data.title;
+            }
+            if (!finalReleaseDate || finalReleaseDate === 'undefined' || finalReleaseDate === '') {
+                finalReleaseDate = tmdbRes.data.release_date;
+            }
+            if (!finalPosterUrl || finalPosterUrl.includes('undefined') || finalPosterUrl.includes('placeholder') || finalPosterUrl === '') {
+                finalPosterUrl = tmdbRes.data.poster_path
+                    ? `https://image.tmdb.org/t/p/w500${tmdbRes.data.poster_path}`
+                    : `https://via.placeholder.com/500x750/131313/FFFFFF?text=${encodeURIComponent(finalTitle || 'No+Cover')}`;
+            }
+        }
+    } catch (tmdbErr) {
+        console.warn(`⚠️ [TMDb Lookup] Fallito recupero da TMDb per ID ${tmdb_movie_id}: ${tmdbErr.message}`);
+    }
+
+    if (!finalTitle) {
+        finalTitle = `Film #${tmdb_movie_id}`;
+    }
+
+    try {
+        const response = await axios.post(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+            username: username,
+            tmdb_movie_id: parseInt(tmdb_movie_id),
+            title: finalTitle,
+            poster_url: finalPosterUrl || null,
+            release_date: finalReleaseDate || null,
+            email: email || `${username}@stoike.cinema`,
+            notified: false
+        }, {
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`📅 [Reminder Insert] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json({ success: true, data: response.data[0] });
+    } catch (error) {
+        console.error(`❌ [Reminder Insert] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const message = error.response && error.response.data && error.response.data.message
+            ? error.response.data.message
+            : error.message;
+
+        if (message.includes('duplicate key') || status === 409) {
+            return res.status(409).json({ success: false, message: 'Avviso già inserito.' });
+        }
+        return res.status(status).json({ success: false, error: message });
+    }
+});
+
+// Rimuove un promemoria di uscita film
+app.delete('/api/reminders/:username/:movie_id', async (req, res) => {
+    const { username, movie_id } = req.params;
+    console.log(`🗑️ [Reminder Delete] Utente '${username}' rimuove avviso per film ID ${movie_id}`);
+
+    try {
+        const response = await axios.delete(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+            params: {
+                username: `eq.${username}`,
+                tmdb_movie_id: `eq.${movie_id}`
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`🗑️ [Reminder Delete] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json({ success: true });
+    } catch (error) {
+        console.error(`❌ [Reminder Delete] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        return res.status(status).json({ success: false, error: error.message });
+    }
+});
+
+
+// =========================================
 // GESTIONE TICKET BUG REPORT (GITHUB API & WEBHOOK)
 // =========================================
 const rateLimitDb = new Map();
@@ -636,7 +773,7 @@ app.post('/api/report-bug', async (req, res) => {
     timestamps.push(now);
 
     const { title, description, email, currentPage, browserInfo } = req.body || {};
-    
+
     if (!title || !description) {
         return res.status(400).json({ success: false, message: 'Titolo e descrizione sono obbligatori.' });
     }
@@ -920,6 +1057,268 @@ app.post('/api/webhook/github', express.raw({ type: 'application/json' }), async
 
     return res.json({ success: true, message: 'Webhook elaborato con successo.' });
 });
+
+
+
+// =========================================
+// AVVISI / PROMEMORIA FILM (Supabase Integration)
+// =========================================
+
+// Recupera tutti i promemoria di un utente
+app.get('/api/reminders/:username', async (req, res) => {
+    const username = req.params.username;
+    console.log(`⏰ [Reminders Get] Richiesta promemoria per utente: '${username}'`);
+
+    try {
+        const response = await axios.get(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+            params: {
+                username: `eq.${username}`,
+                order: 'created_at.desc',
+                select: '*'
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`⏰ [Reminders Get] Risposta Supabase: Stato ${response.status}, Trovati: ${response.data.length}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Reminders Get] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+// Aggiunge un promemoria per un film
+app.post('/api/reminders', async (req, res) => {
+    let { username, tmdb_movie_id, title, poster_url, email } = req.body || {};
+    console.log(`⏰ [Reminders Post] Utente '${username}' inserisce per film ID ${tmdb_movie_id}`);
+
+    if (!username || !tmdb_movie_id) {
+        return res.status(400).json({ error: 'Username e tmdb_movie_id sono obbligatori' });
+    }
+
+    let release_date = null;
+
+    // Se mancano dati del film, recuperali da TMDb
+    if (!title || !poster_url || !release_date) {
+        try {
+            const tmdbRes = await axios.get(`${TMDB_BASE_URL}/movie/${tmdb_movie_id}`, {
+                params: { api_key: TMDB_API_KEY, language: 'it-IT' },
+                timeout: 8000
+            });
+            const movieData = tmdbRes.data;
+            if (!title && movieData.title) title = movieData.title;
+            if (!poster_url && movieData.poster_path) {
+                poster_url = `https://image.tmdb.org/t/p/w500${movieData.poster_path}`;
+            }
+            if (movieData.release_date) {
+                release_date = movieData.release_date; // YYYY-MM-DD
+            }
+        } catch (tmdbErr) {
+            console.error(`⚠️ [Reminders Post] Errore fetch TMDb per film ${tmdb_movie_id}:`, tmdbErr.message);
+        }
+    }
+
+    try {
+        const response = await axios.post(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+            username,
+            tmdb_movie_id: parseInt(tmdb_movie_id),
+            title: title || 'Film Sconosciuto',
+            poster_url: poster_url || '',
+            release_date: release_date || null,
+            email: email || null,
+            notified: false
+        }, {
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`⏰ [Reminders Post] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Reminders Post] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        // Rileva violazione di chiave unica
+        if (error.response && error.response.data && (error.response.data.code === '23505' || String(error.response.data.message).includes('duplicate'))) {
+            return res.status(409).json({ error: 'Avviso già inserito.' });
+        }
+        return res.status(status).json(data);
+    }
+});
+
+// Rimuove un promemoria per un film
+app.delete('/api/reminders/:username/:tmdb_movie_id', async (req, res) => {
+    const { username, tmdb_movie_id } = req.params;
+    console.log(`🗑️ [Reminders Delete] Richiesta rimozione avviso film ID ${tmdb_movie_id} per utente '${username}'`);
+
+    try {
+        const response = await axios.delete(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+            params: {
+                username: `eq.${username}`,
+                tmdb_movie_id: `eq.${tmdb_movie_id}`
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`🗑️ [Reminders Delete] Risposta Supabase: Stato ${response.status}`);
+        return res.status(response.status).json(response.data);
+    } catch (error) {
+        console.error(`❌ [Reminders Delete] ERRORE:`, error.message);
+        const status = error.response ? error.response.status : 500;
+        const data = error.response ? error.response.data : { error: error.message };
+        return res.status(status).json(data);
+    }
+});
+
+
+// =========================================================================
+// BACKGROUND WORKER - CONTROLLO AVVISI DI USCITA ED INVIO EMAIL DI NOTIFICA
+// =========================================================================
+async function checkAndSendReleaseNotifications() {
+    console.log("⏰ [Release Worker] Avvio controllo promemoria film in uscita...");
+    try {
+        const response = await axios.get(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+            params: {
+                notified: 'eq.false',
+                select: '*'
+            },
+            headers: supabaseHeaders(),
+            timeout: 15000
+        });
+
+        const reminders = response.data || [];
+        if (reminders.length === 0) {
+            console.log("⏰ [Release Worker] Nessun promemoria da notificare.");
+            return;
+        }
+
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const todayStr = `${year}-${month}-${day}`;
+
+        console.log(`⏰ [Release Worker] Data odierna locale: ${todayStr}. Analisi di ${reminders.length} promemoria...`);
+
+        for (const reminder of reminders) {
+            const relDate = reminder.release_date;
+            if (!relDate) continue;
+
+            if (relDate <= todayStr) {
+                console.log(`📧 [Release Worker] Notifica film '${reminder.title}' (Uscita: ${relDate}) per '${reminder.email}'...`);
+
+                const subject = `[Stoike] È uscito il film: ${reminder.title}!`;
+                const emailHtml = `
+                <html>
+                <body style="margin: 0; padding: 0; font-family: 'Inter', sans-serif; background-color: #0b0c10; color: #c5c6c7;">
+                    <div style="max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #121318; border: 1px solid rgba(255, 215, 0, 0.1); border-radius: 12px; margin-top: 40px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <h1 style="color: #ffd700; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px;">Stoike</h1>
+                            <div style="height: 2px; width: 60px; background: linear-gradient(90deg, transparent, #ffd700, transparent); margin: 15px auto 0 auto;"></div>
+                        </div>
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <img src="${reminder.poster_url || 'https://via.placeholder.com/300x450/131313/FFFFFF?text=No+Cover'}" alt="${reminder.title}" style="width: 200px; height: auto; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.6); border: 1px solid rgba(255,255,255,0.05);" />
+                        </div>
+                        <div style="font-size: 16px; line-height: 1.6; color: #c5c6c7; margin-bottom: 30px; text-align: center;">
+                            <p style="font-size: 20px; color: #ffffff; font-weight: 700; margin-bottom: 10px;">È arrivato il grande giorno!</p>
+                            <p>Il film che stavi aspettando con ansia è finalmente uscito nelle sale ed è disponibile per te.</p>
+                            
+                            <div style="background-color: rgba(255,215,0,0.03); border: 1px solid rgba(255, 215, 0, 0.15); padding: 15px 20px; margin: 25px auto; border-radius: 8px; max-width: 400px;">
+                                <span style="font-size: 11px; text-transform: uppercase; color: #ffd700; font-weight: 700; display: block; margin-bottom: 5px; letter-spacing: 1px;">Ora Disponibile</span>
+                                <strong style="color: #ffffff; font-size: 18px; display: block;">${reminder.title}</strong>
+                                <span style="color: #ffd700; font-size: 13px; display: block; margin-top: 5px;">Data Uscita: ${new Date(relDate).toLocaleDateString('it-IT')}</span>
+                            </div>
+                            
+                            <p>Corri su Stoike per consultare le recensioni della community, votarlo o scrivere la tua recensione!</p>
+                            
+                            <a href="http://localhost:3000/movie.html?id=${reminder.tmdb_movie_id}" style="display: inline-block; background-color: #ffd700; color: #0b0c10; font-weight: 700; padding: 12px 30px; border-radius: 30px; text-decoration: none; margin-top: 15px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(255,215,0,0.3);">Vedi Dettaglio Film</a>
+                        </div>
+                        <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px; font-size: 13px; color: rgba(255,255,255,0.4);">
+                            <p>Hai ricevuto questa email perché hai attivato un promemoria per l'uscita di questo film su Stoike.</p>
+                            <p style="margin-top: 5px; font-weight: 600; color: #ffd700;">Il Team Stoike</p>
+                        </div>
+                    </div>
+                </body>
+                </html>
+                `;
+
+                const smtpHost = process.env.SMTP_HOST;
+                const smtpPort = process.env.SMTP_PORT || '587';
+                const smtpUser = process.env.SMTP_USER;
+                const smtpPass = process.env.SMTP_PASS;
+                const smtpFrom = process.env.SMTP_FROM || '"Stoike Alerts" <noreply@stoike.cinema>';
+
+                let emailSent = false;
+                if (!smtpHost || !smtpUser || !smtpPass) {
+                    console.log("====================================================================");
+                    console.log("✉️  [MOCK EMAIL ALERTS - TERMINAL LOGGING FALLBACK]");
+                    console.log(`FROM:    ${smtpFrom}`);
+                    console.log(`TO:      ${reminder.email}`);
+                    console.log(`SUBJECT: ${subject}`);
+                    console.log("--------------------------------------------------------------------");
+                    console.log(`È uscito il film '${reminder.title}'!`);
+                    console.log("====================================================================");
+                    emailSent = true;
+                } else {
+                    const nodemailer = require('nodemailer');
+                    try {
+                        const transporter = nodemailer.createTransport({
+                            host: smtpHost,
+                            port: parseInt(smtpPort),
+                            secure: parseInt(smtpPort) === 465,
+                            auth: {
+                                user: smtpUser,
+                                pass: smtpPass
+                            }
+                        });
+
+                        await transporter.sendMail({
+                            from: smtpFrom,
+                            to: reminder.email,
+                            subject: subject,
+                            html: emailHtml
+                        });
+                        console.log(`✅ [Release Worker] Notifica email inviata con successo via SMTP a '${reminder.email}'!`);
+                        emailSent = true;
+                    } catch (smtpErr) {
+                        console.error(`❌ [Release Worker] Errore invio SMTP:`, smtpErr.message);
+                        console.log("====================================================================");
+                        console.log("✉️  [FALLBACK - MOCK EMAIL LOGGED TO TERMINAL]");
+                        console.log(`FROM:    ${smtpFrom}`);
+                        console.log(`TO:      ${reminder.email}`);
+                        console.log(`SUBJECT: ${subject}`);
+                        console.log("====================================================================");
+                        emailSent = true;
+                    }
+                }
+
+                if (emailSent) {
+                    try {
+                        await axios.patch(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+                            notified: true
+                        }, {
+                            params: {
+                                id: `eq.${reminder.id}`
+                            },
+                            headers: supabaseHeaders(),
+                            timeout: 10000
+                        });
+                        console.log(`✅ [Release Worker] Stato notified impostato a TRUE per ID ${reminder.id}`);
+                    } catch (patchErr) {
+                        console.error(`❌ [Release Worker] Errore patch notified per ID ${reminder.id}:`, patchErr.message);
+                    }
+                }
+            }
+        }
+    } catch (err) {
+        console.error("❌ [Release Worker] ERRORE GENERALE:", err.message);
+    }
+}
+
+// Avvia il background worker dopo 5 secondi dallo startup, poi ogni 12 ore
+setTimeout(checkAndSendReleaseNotifications, 5000);
+setInterval(checkAndSendReleaseNotifications, 12 * 60 * 60 * 1000);
 
 
 // =========================================
