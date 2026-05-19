@@ -388,10 +388,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     if (menuToggle) {
-        menuToggle.addEventListener('mouseenter', openDrawer);
-        menuToggle.addEventListener('mouseleave', () => {
-            closeTimeout = setTimeout(closeDrawer, 800);
-        });
         menuToggle.addEventListener('click', (e) => {
             e.stopPropagation();
             if (sidebar && sidebar.classList.contains('translate-x-0')) {
