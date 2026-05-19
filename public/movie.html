@@ -56,7 +56,8 @@
                     </div>
                 </div>
                 <div class="relative" id="lang-selector-container">
-                    <button id="lang-dropdown-btn" class="flex items-center justify-center bg-black/60 border border-outline-variant/30 rounded-lg w-10 h-10 hover:bg-white/5 focus:border-primary-container focus:ring-0 outline-none cursor-pointer transition-colors">
+
+                    <button id="lang-dropdown-btn" class="flex items-center justify-center bg-black/60 border border-outline-variant/30 rounded-lg w-10 h-10 hover:bg-white/5 focus:border-primary-container focus:ring-0 outline-none transition-colors">
                         <img id="current-lang-flag" src="https://flagcdn.com/w20/it.png" alt="IT" class="w-6 h-auto rounded-sm">
                     </button>
                     <div id="lang-dropdown-menu" class="hidden absolute right-0 mt-2 w-14 bg-surface-container border border-outline-variant/20 rounded-lg shadow-2xl overflow-hidden z-50 flex-col">
@@ -67,9 +68,11 @@
                         <button onclick="changeLanguage('de')" class="flex items-center justify-center w-full py-3 hover:bg-white/10 transition-colors"><img src="https://flagcdn.com/w20/de.png" alt="DE" class="w-6 h-auto rounded-sm"></button>
                     </div>
                 </div>
-
-                <button class="p-2 hover:bg-white/5 rounded-full transition-all">
+                <button class="p-2 hover:bg-white/5 rounded-full transition-all" title="Notifiche">
                     <span class="material-symbols-outlined text-primary-container" data-icon="notifications">notifications</span>
+                </button>
+                <button onclick="window.location.href='/reminders.html'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Avvisi di Uscita">
+                    <span class="material-symbols-outlined text-primary-container" data-icon="calendar_month">calendar_month</span>
                 </button>
                 <button class="p-2 hover:bg-white/5 rounded-full transition-all">
                     <span class="material-symbols-outlined text-primary-container" data-icon="bookmark">bookmark</span>
@@ -80,23 +83,6 @@
             </div>
         </div>
     </nav>
-
-    <!-- Sub-Header row (only in movie details) -->
-    <div id="sub-header" class="fixed top-20 left-0 w-full z-40 bg-background/85 backdrop-blur-xl border-b border-outline-variant/10 text-primary-container transition-all duration-300 transform ease-in-out opacity-0 -translate-y-4 pointer-events-none">
-        <div class="flex justify-between items-center h-14 px-margin-mobile md:px-margin-desktop max-w-full mx-auto">
-            <!-- Under Stoike Logo (Left) -->
-            <div class="flex items-center">
-                <button onclick="window.location.href='/index.html'" class="flex items-center gap-1.5 text-on-surface-variant hover:text-primary-container transition-colors group font-label-md text-label-md">
-                    <span class="material-symbols-outlined group-hover:-translate-x-0.5 transition-transform text-[20px]">arrow_back</span>
-                    <span class="hidden sm:inline" data-i18n="movie.backCatalog">Torna al catalogo</span>
-                </button>
-            </div>
-            <!-- Under Navbar links (Right) -->
-            <div class="flex items-center">
-                <span id="sub-header-movie-title" class="text-white font-headline-sm text-[16px] md:text-headline-sm font-semibold tracking-wide truncate max-w-[150px] sm:max-w-xs md:max-w-md"></span>
-            </div>
-        </div>
-    </div>
 
     <!-- Sidebar Edge Hover Trigger & Blur Backdrop Overlay -->
     <div id="sidebar-trigger" class="fixed left-0 top-0 bottom-0 w-6 z-[80] bg-transparent"></div>
@@ -180,6 +166,11 @@
                             <span class="material-symbols-outlined text-primary-container material-fill-1 text-[28px]">star</span>
                             <span id="detail-rating" class="text-primary-container font-headline-sm text-headline-sm"></span>
                             <span class="text-on-surface-variant font-label-md text-label-md">/ 10</span>
+                            <div class="ml-4 pl-4 border-l border-white/10 flex items-center">
+                                <button id="movie-detail-save-btn" onclick="triggerSaveMovieDetail(event)" class="p-2 bg-black/60 backdrop-blur-md border border-outline-variant/20 rounded-full flex items-center justify-center hover:bg-primary-container hover:text-black text-white transition-colors" title="Avvisami all'uscita">
+                                    <span class="material-symbols-outlined text-[20px]">calendar_month</span>
+                                </button>
+                            </div>
                         </div>
                         
                         <!-- Synopsis -->

@@ -223,6 +223,31 @@ async function loadMovieDetails(movieId) {
         await loadReviews(movieId);
         await loadForum(movieId);
 
+        // Style movie detail save button if already active
+        const user = localStorage.getItem('stoike_user');
+        let isSaved = false;
+        if (user) {
+            const savedRaw = localStorage.getItem('stoike_saved_movies_' + user);
+            if (savedRaw) {
+                try {
+                    const saved = JSON.parse(savedRaw);
+                    isSaved = saved.some(m => (m.id == movieId || m.tmdb_movie_id == movieId));
+                } catch(e){}
+            }
+        }
+        
+        const saveBtn = document.getElementById('movie-detail-save-btn');
+        if (saveBtn) {
+            const icon = saveBtn.querySelector('.material-symbols-outlined');
+            if (isSaved) {
+                saveBtn.className = "p-2 bg-yellow-400/20 border border-yellow-400/40 rounded-full flex items-center justify-center text-yellow-400 hover:bg-yellow-400/30 transition-colors";
+                if (icon) icon.classList.add('material-fill-1');
+            } else {
+                saveBtn.className = "p-2 bg-black/60 backdrop-blur-md border border-outline-variant/20 rounded-full flex items-center justify-center hover:bg-primary-container hover:text-black text-white transition-colors";
+                if (icon) icon.classList.remove('material-fill-1');
+            }
+        }
+
     } catch (e) {
         console.error('Error loading movie details:', e);
         document.getElementById('detail-title').innerText = i18n.t('movie.errorLoading');
@@ -776,3 +801,11 @@ function renderMentionDropdown(users, matchStartIndex, matchEndIndex) {
         });
     });
 }
+
+// Save movie from details page
+window.triggerSaveMovieDetail = function(event) {
+    if (!currentMovieId) return;
+    const title = document.getElementById('detail-title').innerText;
+    const posterUrl = document.getElementById('detail-poster').src;
+    handleSaveMovie(event, currentMovieId, title, posterUrl);
+};

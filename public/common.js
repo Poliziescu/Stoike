@@ -70,21 +70,81 @@ function logoutUser() {
     window.location.reload();
 }
 
-function openAuthModal() {
+// Premium glassmorphic toast notification system
+window.showStoikeToast = function(message, type = 'success') {
+    const existing = document.querySelectorAll('.stoike-toast');
+    existing.forEach(t => t.remove());
+
+    const toast = document.createElement('div');
+    toast.className = 'stoike-toast fixed bottom-6 right-6 z-[9999] max-w-md p-4 rounded-xl border flex items-center gap-3 shadow-2xl backdrop-blur-xl transition-all duration-500 transform translate-y-10 opacity-0';
+    
+    let borderClass = 'border-primary-container/30 bg-surface-container-high/90 text-primary-container';
+    let icon = 'info';
+    let iconColor = 'text-primary-container';
+    
+    if (type === 'success') {
+        borderClass = 'border-green-500/30 bg-green-950/40 text-green-300';
+        icon = 'check_circle';
+        iconColor = 'text-green-400';
+    } else if (type === 'error' || type === 'warning') {
+        borderClass = 'border-red-500/30 bg-red-950/40 text-red-300';
+        icon = 'error';
+        iconColor = 'text-red-400';
+    } else if (type === 'info') {
+        borderClass = 'border-primary-container/20 bg-surface-container/60 text-on-surface';
+        icon = 'info';
+        iconColor = 'text-primary-container';
+    }
+
+    toast.className += ' ' + borderClass;
+    
+    toast.innerHTML = `
+        <span class="material-symbols-outlined ${iconColor} text-[22px] flex-shrink-0">${icon}</span>
+        <div class="font-label-md text-sm leading-relaxed">${message}</div>
+        <button class="ml-auto text-on-surface-variant hover:text-white transition-colors p-1 rounded-full hover:bg-white/5" onclick="this.parentElement.remove()">
+            <span class="material-symbols-outlined text-[16px]">close</span>
+        </button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.classList.remove('translate-y-10', 'opacity-0');
+    }, 50);
+    
+    setTimeout(() => {
+        toast.classList.add('translate-y-10', 'opacity-0');
+        setTimeout(() => toast.remove(), 500);
+    }, 5000);
+};
+
+// Override standard browser alert with premium glassmorphic toast
+window.alert = function(msg) {
+    let type = 'info';
+    const lower = String(msg).toLowerCase();
+    if (lower.includes('errore') || lower.includes('fallit') || lower.includes('impossibile') || lower.includes('non trov') || lower.includes('must') || lower.includes('obbligatori') || lower.includes('erro')) {
+        type = 'error';
+    } else if (lower.includes('success') || lower.includes('completato') || lower.includes('salvato') || lower.includes('riuscito')) {
+        type = 'success';
+    }
+    window.showStoikeToast(msg, type);
+};
+
+window.openAuthModal = function openAuthModal() {
     const modal = document.getElementById('auth-modal');
     if (modal) {
         modal.classList.remove('hidden');
         const error = document.getElementById('auth-error');
         if (error) error.classList.add('hidden');
     }
-}
+};
 
-function closeAuthModal() {
+window.closeAuthModal = function closeAuthModal() {
     const modal = document.getElementById('auth-modal');
     const form = document.getElementById('auth-form');
     if (modal) modal.classList.add('hidden');
     if (form) form.reset();
-}
+};
 
 function switchAuthTab(mode) {
     currentAuthMode = mode;
@@ -103,12 +163,32 @@ function switchAuthTab(mode) {
         if (ti) ti.innerText = 'Login';
         if (bt) bt.innerText = 'Accedi';
         if (bi) bi.innerText = 'login';
+        
+        // Rimuovi campo email se presente
+        const emailGroup = document.getElementById('auth-email-group');
+        if (emailGroup) emailGroup.remove();
     } else {
         if (tr) tr.className = 'flex-1 font-label-md text-primary-container border-b-2 border-primary-container pb-1 transition-colors';
         if (tl) tl.className = 'flex-1 font-label-md text-on-surface-variant hover:text-white transition-colors pb-1';
         if (ti) ti.innerText = 'Registrazione';
         if (bt) bt.innerText = 'Registrati';
         if (bi) bi.innerText = 'person_add';
+        
+        // Aggiungi campo email per registrazione
+        let emailGroup = document.getElementById('auth-email-group');
+        if (!emailGroup) {
+            emailGroup = document.createElement('div');
+            emailGroup.id = 'auth-email-group';
+            emailGroup.className = 'transition-all duration-300';
+            emailGroup.innerHTML = `
+                <label class="block font-label-sm text-on-surface-variant mb-1">Email</label>
+                <input id="auth-email" required class="w-full bg-black/50 border border-outline-variant/30 rounded px-4 py-3 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors" type="email" placeholder="Es. mike@example.com" />
+            `;
+            const submitBtn = document.getElementById('auth-submit-btn');
+            if (submitBtn) {
+                submitBtn.parentNode.insertBefore(emailGroup, submitBtn);
+            }
+        }
     }
 }
 
@@ -212,15 +292,149 @@ async function fetchSuggestionsGlobal() {
     }
 }
 
+// Utility function to sync user reminders from Supabase on startup
+async function syncUserReminders() {
+    const user = localStorage.getItem('stoike_user');
+    if (!user) return;
+    try {
+        const resp = await fetch('/api/reminders/' + encodeURIComponent(user));
+        if (resp.ok) {
+            const data = await resp.json();
+            localStorage.setItem('stoike_saved_movies_' + user, JSON.stringify(data));
+            // Trigger UI update for current active reminders on page load
+            if (data && Array.isArray(data)) {
+                data.forEach(m => {
+                    updateMovieSaveButtons(m.tmdb_movie_id || m.id, true);
+                });
+            }
+        }
+    } catch (e) {
+        console.warn("Impossibile sincronizzare i promemoria dal server:", e);
+    }
+}
+
+// Utility function to toggle save button styles dynamically
+function updateMovieSaveButtons(id, active) {
+    const buttons = document.querySelectorAll(`[id^="card-save-btn-${id}"], #movie-detail-save-btn`);
+    buttons.forEach(btn => {
+        const icon = btn.querySelector('.material-symbols-outlined');
+        if (active) {
+            btn.className = "p-2 bg-yellow-400/20 border border-yellow-400/40 rounded-full flex items-center justify-center text-yellow-400 hover:bg-yellow-400/30 transition-colors";
+            if (icon) icon.classList.add('material-fill-1');
+        } else {
+            btn.className = "p-2 bg-black/60 backdrop-blur-md border border-outline-variant/20 rounded-full flex items-center justify-center hover:bg-primary-container hover:text-black text-white transition-colors";
+            if (icon) icon.classList.remove('material-fill-1');
+        }
+    });
+}
+
+// Asynchronous glassmorphic email modal prompt
+function promptEmailModal() {
+    return new Promise((resolve) => {
+        const modalDiv = document.createElement('div');
+        modalDiv.id = 'email-prompt-modal';
+        modalDiv.className = 'fixed inset-0 z-[200] flex items-center justify-center';
+        modalDiv.innerHTML = `
+            <div class="absolute inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"></div>
+            <div class="relative w-[90%] max-w-md mx-auto bg-surface-container border border-outline-variant/20 rounded-2xl p-6 shadow-2xl z-10 transition-all duration-300 transform scale-95 opacity-0">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-headline-sm font-headline-sm text-primary-container flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary-container">alternate_email</span>
+                        Notifica Email
+                    </h3>
+                    <button id="email-prompt-close" class="text-on-surface-variant hover:text-white transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <p class="text-on-surface-variant font-body-md text-sm mb-4">
+                    Inserisci la tua email per essere notificato non appena questo film uscirà al cinema.
+                </p>
+                <form id="email-prompt-form" class="flex flex-col gap-4">
+                    <div id="email-prompt-error" class="hidden bg-red-500/20 text-red-300 font-label-sm p-3 rounded border border-red-500/30 text-center"></div>
+                    <div>
+                        <label class="block font-label-sm text-on-surface-variant mb-1">Indirizzo Email</label>
+                        <input id="email-prompt-input" required class="w-full bg-black/50 border border-outline-variant/30 rounded px-4 py-3 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors" type="email" placeholder="Es. mario@example.com" />
+                    </div>
+                    <button type="submit" class="w-full py-3 mt-2 bg-primary-container text-black font-label-md text-label-md rounded hover:bg-primary transition-colors flex justify-center items-center gap-2 font-bold">
+                        <span class="material-symbols-outlined">notifications_active</span> Attiva Promemoria
+                    </button>
+                </form>
+            </div>
+        `;
+        document.body.appendChild(modalDiv);
+
+        const card = modalDiv.querySelector('.relative');
+        setTimeout(() => {
+            card.classList.remove('scale-95', 'opacity-0');
+            card.classList.add('scale-100', 'opacity-100');
+        }, 10);
+
+        const closeBtn = modalDiv.querySelector('#email-prompt-close');
+        const backdrop = modalDiv.querySelector('.absolute');
+        const form = modalDiv.querySelector('#email-prompt-form');
+        const input = modalDiv.querySelector('#email-prompt-input');
+        const error = modalDiv.querySelector('#email-prompt-error');
+
+        function cleanup(result) {
+            card.classList.remove('scale-100', 'opacity-100');
+            card.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modalDiv.remove();
+                resolve(result);
+            }, 300);
+        }
+
+        closeBtn.addEventListener('click', () => cleanup(null));
+        backdrop.addEventListener('click', () => cleanup(null));
+
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const val = input.value.trim();
+            const emailPattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            if (!emailPattern.test(val)) {
+                error.innerText = 'Indirizzo email non valido.';
+                error.classList.remove('hidden');
+                return;
+            }
+            cleanup(val);
+        });
+    });
+}
+
 // Global movie card renderer used on all search/list/genre results
 function renderMovieCard(movie) {
+    const user = localStorage.getItem('stoike_user');
+    let isSaved = false;
+    if (user) {
+        const savedRaw = localStorage.getItem('stoike_saved_movies_' + user);
+        if (savedRaw) {
+            try {
+                const saved = JSON.parse(savedRaw);
+                isSaved = saved.some(m => (m.id == movie.id || m.tmdb_movie_id == movie.id));
+            } catch(e){}
+        }
+    }
+
+    const movieTitleSafe = movie.title.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    
+    const activeBtnClass = isSaved 
+        ? "p-2 bg-yellow-400/20 border border-yellow-400/40 rounded-full flex items-center justify-center text-yellow-400 hover:bg-yellow-400/30 transition-colors" 
+        : "p-2 bg-black/60 backdrop-blur-md border border-outline-variant/20 rounded-full flex items-center justify-center hover:bg-primary-container hover:text-black text-white transition-colors";
+    
+    const activeIconClass = isSaved ? "material-symbols-outlined text-[16px] material-fill-1" : "material-symbols-outlined text-[16px]";
+
     return `
         <div class="movie-card group flex flex-col bg-surface-container/30 border border-outline-variant/10 rounded-2xl overflow-hidden hover:border-primary-container/30 hover:bg-surface-container/50 hover:shadow-2xl hover:shadow-primary-container/5 transition-all duration-500 cursor-pointer" data-movie-id="${movie.id}" onclick="window.location.href='/movie.html?id=${movie.id}'">
             <div class="relative aspect-[2/3] overflow-hidden card-media-container">
                 <img src="${movie.poster_url}" alt="${movie.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy" onerror="this.src='https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover'" />
-                <div class="movie-rating-badge absolute top-3 right-3 px-3 py-1 bg-black/60 backdrop-blur-md border border-outline-variant/20 rounded-full flex items-center gap-1 z-30 transition-opacity duration-300">
-                    <span class="material-symbols-outlined text-[14px] material-fill-1 text-primary-container">star</span>
-                    <span class="font-label-sm text-label-sm text-primary-container">${movie.rating}</span>
+                <div class="movie-rating-badge absolute top-3 right-3 flex items-center gap-2 z-30 transition-opacity duration-300">
+                    <div class="px-3 py-1 bg-black/60 backdrop-blur-md border border-outline-variant/20 rounded-full flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px] material-fill-1 text-primary-container">star</span>
+                        <span class="font-label-sm text-label-sm text-primary-container">${movie.rating}</span>
+                    </div>
+                    <button id="card-save-btn-${movie.id}" class="${activeBtnClass}" title="Avvisami all'uscita" onclick="handleSaveMovie(event, ${movie.id}, '${movieTitleSafe}', '${movie.poster_url}')">
+                        <span class="${activeIconClass}">calendar_month</span>
+                    </button>
                 </div>
             </div>
             <div class="p-5 flex flex-col gap-2 flex-grow">
@@ -234,6 +448,102 @@ function renderMovieCard(movie) {
         </div>
     `;
 }
+
+// Global handle save movie (Supports interactive dynamic toggle state)
+window.handleSaveMovie = async function(event, id, title, posterUrl) {
+    if (event) event.stopPropagation();
+    const user = localStorage.getItem('stoike_user');
+    if (!user) {
+        showStoikeToast("Devi effettuare l'accesso per salvare i film ed essere avvisato.", 'warning');
+        openAuthModal();
+        return;
+    }
+
+    const key = 'stoike_saved_movies_' + user;
+    let saved = [];
+    const savedRaw = localStorage.getItem(key);
+    if (savedRaw) {
+        try { saved = JSON.parse(savedRaw); } catch(e){}
+    }
+
+    const isSaved = saved.some(m => (m.id == id || m.tmdb_movie_id == id));
+
+    if (isSaved) {
+        // Tenta la cancellazione (rimozione) del promemoria
+        try {
+            const resp = await fetch(`/api/reminders/${encodeURIComponent(user)}/${id}`, {
+                method: 'DELETE'
+            });
+            if (resp.ok) {
+                saved = saved.filter(m => !(m.id == id || m.tmdb_movie_id == id));
+                localStorage.setItem(key, JSON.stringify(saved));
+                showStoikeToast("Avviso di uscita rimosso con successo.", 'info');
+                updateMovieSaveButtons(id, false);
+                return;
+            } else {
+                throw new Error("Errore risposta server");
+            }
+        } catch (err) {
+            console.error("Errore durante la rimozione dell'avviso:", err);
+            // Fallback locale in caso di errore server
+            saved = saved.filter(m => !(m.id == id || m.tmdb_movie_id == id));
+            localStorage.setItem(key, JSON.stringify(saved));
+            showStoikeToast("Avviso rimosso localmente.", 'info');
+            updateMovieSaveButtons(id, false);
+        }
+    } else {
+        // Richiedi email se non presente in localStorage
+        let email = localStorage.getItem('stoike_email_' + user);
+        if (!email) {
+            email = await promptEmailModal();
+            if (!email) {
+                // L'utente ha annullato l'operazione
+                return;
+            }
+            localStorage.setItem('stoike_email_' + user, email);
+        }
+
+        // Tenta il salvataggio nel database tramite backend
+        let savedInDb = false;
+        try {
+            const resp = await fetch('/api/reminders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    username: user,
+                    tmdb_movie_id: id,
+                    title: title,
+                    poster_url: posterUrl,
+                    email: email
+                })
+            });
+            
+            if (resp.ok) {
+                savedInDb = true;
+            } else if (resp.status === 409) {
+                showStoikeToast("Hai già attivato l'avviso per questo film.", 'info');
+                // Sincronizza lo stato dell'icona
+                updateMovieSaveButtons(id, true);
+                return;
+            }
+        } catch(err) {
+            console.warn("Impossibile salvare nel database, procedo in locale:", err);
+        }
+        
+        if (!saved.some(m => (m.id == id || m.tmdb_movie_id == id))) {
+            saved.push({ id: id, tmdb_movie_id: id, title, poster_url: posterUrl, added_at: new Date().toISOString() });
+            localStorage.setItem(key, JSON.stringify(saved));
+            
+            if (savedInDb) {
+                showStoikeToast("Promemoria attivato con successo! Riceverai un'email il giorno dell'uscita.", 'success');
+            } else {
+                showStoikeToast("Promemoria salvato localmente.", 'success');
+            }
+            updateMovieSaveButtons(id, true);
+        }
+    }
+};
+
 
 // Global Setup logic
 document.addEventListener('DOMContentLoaded', async () => {
@@ -284,6 +594,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Check initial auth state
     checkAuthState();
     await loadTMDBGenres();
+    await syncUserReminders();
 
     // Close Auth modal handlers
     const ac = document.getElementById('auth-close');
@@ -341,6 +652,15 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bt = document.getElementById('auth-btn-text');
             if (!u || !p) return;
             
+            let emailVal = null;
+            if (currentAuthMode === 'register') {
+                const authEmailInput = document.getElementById('auth-email');
+                if (authEmailInput) {
+                    emailVal = authEmailInput.value.trim();
+                    if (!emailVal) return;
+                }
+            }
+            
             const originalText = bt.innerText;
             bt.innerText = 'Attendere...';
             sb.disabled = true;
@@ -356,6 +676,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (data && data.success) {
                     localStorage.setItem('stoike_user', data.username);
                     localStorage.setItem('stoike_role', data.role);
+                    if (emailVal) {
+                        localStorage.setItem('stoike_email_' + data.username, emailVal);
+                    }
                     closeAuthModal();
                     checkAuthState();
                     window.location.reload(); // Refresh the page to redraw interface context
