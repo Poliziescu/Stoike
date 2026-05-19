@@ -65,6 +65,8 @@ const translations = {
     'movie.synopsis':        { it: 'Trama', en: 'Synopsis', fr: 'Synopsis', es: 'Sinopsis', de: 'Handlung' },
     'movie.cast':            { it: 'Cast Principale', en: 'Main Cast', fr: 'Distribution', es: 'Reparto Principal', de: 'Hauptbesetzung' },
     'movie.franchise':       { it: 'Prequel & Sequel (Franchise)', en: 'Prequel & Sequel (Franchise)', fr: 'Préquelle & Suite (Franchise)', es: 'Precuela y Secuela (Franquicia)', de: 'Prequel & Sequel (Franchise)' },
+    'movie.prequelLabel':    { it: 'Prequel', en: 'Prequel', fr: 'Préquelle', es: 'Precuela', de: 'Prequel' },
+    'movie.sequelLabel':     { it: 'Sequel', en: 'Sequel', fr: 'Suite', es: 'Secuela', de: 'Fortsetzung' },
     'movie.similar':         { it: 'Titoli Simili Suggeriti', en: 'Similar Titles', fr: 'Titres Similaires', es: 'Títulos Similares', de: 'Ähnliche Titel' },
     'movie.trailer':         { it: 'Trailer Ufficiale', en: 'Official Trailer', fr: 'Bande-annonce Officielle', es: 'Tráiler Oficial', de: 'Offizieller Trailer' },
     'movie.errorLoading':    { it: 'Errore di caricamento', en: 'Loading error', fr: 'Erreur de chargement', es: 'Error de carga', de: 'Ladefehler' },

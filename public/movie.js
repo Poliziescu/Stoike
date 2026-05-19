@@ -149,20 +149,60 @@ async function loadMovieDetails(movieId) {
         if (movie.belongs_to_collection) {
             try {
                 const collection = await fetchTMDB(`/collection/${movie.belongs_to_collection.id}`);
-                if (collection && collection.parts && collection.parts.length > 1) {
-                    // Filter out the current movie
-                    const parts = collection.parts.filter(p => p.id !== movieId);
-                    if (parts.length > 0) {
+                if (collection && collection.parts && collection.parts.length > 0) {
+                    // Ensure the current movie is present in the collection parts with correct release date
+                    let currentMovieInCollection = collection.parts.find(p => p.id === movieId);
+                    if (!currentMovieInCollection) {
+                        currentMovieInCollection = { id: movieId, title: movie.title, release_date: movie.release_date };
+                        collection.parts.push(currentMovieInCollection);
+                    }
+
+                    // Sort parts by release date (movies with missing release date are filtered out)
+                    const sortedParts = collection.parts
+                        .filter(p => p.release_date)
+                        .sort((a, b) => new Date(a.release_date) - new Date(b.release_date));
+
+                    const currentIndex = sortedParts.findIndex(p => p.id === movieId);
+                    
+                    let prequel = null;
+                    let sequel = null;
+
+                    if (currentIndex !== -1) {
+                        if (currentIndex > 0) {
+                            prequel = sortedParts[currentIndex - 1];
+                        }
+                        if (currentIndex < sortedParts.length - 1) {
+                            sequel = sortedParts[currentIndex + 1];
+                        }
+                    }
+
+                    if (prequel || sequel) {
                         relatedEl.innerHTML = '';
-                        parts.forEach(p => {
+                        
+                        // Set labels dynamically with i18n
+                        const prequelLabelText = window.i18n ? i18n.t('movie.prequelLabel') : 'Prequel';
+                        const sequelLabelText = window.i18n ? i18n.t('movie.sequelLabel') : 'Sequel';
+
+                        if (prequel) {
                             const btn = document.createElement('button');
-                            btn.className = 'px-3.5 py-2 bg-white/5 hover:bg-primary-container hover:text-black rounded-full border border-white/10 text-on-surface-variant font-label-md transition-all duration-300 transform hover:scale-105 shadow-sm text-sm font-medium';
-                            btn.innerText = p.title;
+                            btn.className = 'px-3.5 py-2 bg-white/5 hover:bg-primary-container hover:text-black rounded-full border border-white/10 text-on-surface-variant font-label-md transition-all duration-300 transform hover:scale-105 shadow-sm text-sm font-medium flex items-center gap-1.5 group';
+                            btn.innerHTML = `<span class="material-symbols-outlined text-[18px] group-hover:-translate-x-0.5 transition-transform">arrow_back</span> <strong class="text-primary-container group-hover:text-black font-bold mr-1">${prequelLabelText}:</strong> ${prequel.title}`;
                             btn.addEventListener('click', () => {
-                                window.location.href = `/movie.html?id=${p.id}`;
+                                window.location.href = `/movie.html?id=${prequel.id}`;
                             });
                             relatedEl.appendChild(btn);
-                        });
+                        }
+
+                        if (sequel) {
+                            const btn = document.createElement('button');
+                            btn.className = 'px-3.5 py-2 bg-white/5 hover:bg-primary-container hover:text-black rounded-full border border-white/10 text-on-surface-variant font-label-md transition-all duration-300 transform hover:scale-105 shadow-sm text-sm font-medium flex items-center gap-1.5 group';
+                            btn.innerHTML = `<strong class="text-primary-container group-hover:text-black font-bold mr-1">${sequelLabelText}:</strong> ${sequel.title} <span class="material-symbols-outlined text-[18px] group-hover:translate-x-0.5 transition-transform">arrow_forward</span>`;
+                            btn.addEventListener('click', () => {
+                                window.location.href = `/movie.html?id=${sequel.id}`;
+                            });
+                            relatedEl.appendChild(btn);
+                        }
+
                         relatedContainer.classList.remove('hidden');
                     } else {
                         relatedContainer.classList.add('hidden');
