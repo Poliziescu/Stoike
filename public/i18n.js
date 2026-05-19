@@ -58,6 +58,8 @@ const translations = {
     'home.noTitle':         { it: 'Senza Titolo', en: 'Untitled', fr: 'Sans titre', es: 'Sin título', de: 'Ohne Titel' },
     'home.noSynopsis':      { it: 'Nessuna trama disponibile per questo capolavoro.', en: 'No synopsis available for this masterpiece.', fr: "Aucun synopsis disponible pour ce chef-d'œuvre.", es: 'No hay sinopsis disponible para esta obra maestra.', de: 'Keine Zusammenfassung für dieses Meisterwerk verfügbar.' },
     'home.watchBtn':        { it: 'Guarda Ora', en: 'Watch Now', fr: 'Regarder', es: 'Ver Ahora', de: 'Jetzt ansehen' },
+    'home.heroBadge':       { it: 'Ultime Uscite', en: 'Latest Releases', fr: 'Dernières Sorties', es: 'Últimos Estrenos', de: 'Neuerscheinungen' },
+    'home.watchTrailer':    { it: 'Guarda Trailer', en: 'Watch Trailer', fr: 'Regarder la Bande-annonce', es: 'Ver Tráiler', de: 'Trailer ansehen' },
 
     // ── Movie Detail ──
     'movie.loading':         { it: 'Caricamento...', en: 'Loading...', fr: 'Chargement...', es: 'Cargando...', de: 'Laden...' },
