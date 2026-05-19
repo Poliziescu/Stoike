@@ -104,14 +104,6 @@ app.get('/account.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'account.html'));
 });
 
-// Reminders
-app.get('/reminders', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'reminders.html'));
-});
-app.get('/reminders.html', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'reminders.html'));
-});
-
 // Serve le risorse statiche (JS, CSS, immagini) della cartella public
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -694,20 +686,47 @@ app.post('/api/reminders', async (req, res) => {
     }
 
     try {
-        const response = await axios.post(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
-            username: username,
-            tmdb_movie_id: parseInt(tmdb_movie_id),
-            title: finalTitle,
-            poster_url: finalPosterUrl || null,
-            release_date: finalReleaseDate || null,
-            email: email || `${username}@stoike.cinema`,
-            notified: false
-        }, {
-            headers: supabaseHeaders(),
-            timeout: 10000
-        });
+        let response;
+        try {
+            console.log(`📅 [Reminder Insert] Tentativo inserimento con colonna 'notified'...`);
+            response = await axios.post(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+                username: username,
+                tmdb_movie_id: parseInt(tmdb_movie_id),
+                title: finalTitle,
+                poster_url: finalPosterUrl || null,
+                release_date: finalReleaseDate || null,
+                email: email || `${username}@stoike.cinema`,
+                notified: false
+            }, {
+                headers: supabaseHeaders(),
+                timeout: 10000
+            });
+        } catch (dbErr) {
+            const dbErrMsg = dbErr.response && dbErr.response.data && dbErr.response.data.message
+                ? dbErr.response.data.message
+                : dbErr.message;
+            const isMissingNotified = dbErrMsg.includes("notified") || (dbErr.response && dbErr.response.data && dbErr.response.data.code === 'PGRST204');
+            
+            if (isMissingNotified) {
+                console.warn(`⚠️ [Reminder Insert] Colonna 'notified' non configurata nel DB Supabase. Riprovo l'inserimento senza la colonna 'notified'...`);
+                response = await axios.post(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+                    username: username,
+                    tmdb_movie_id: parseInt(tmdb_movie_id),
+                    title: finalTitle,
+                    poster_url: finalPosterUrl || null,
+                    release_date: finalReleaseDate || null,
+                    email: email || `${username}@stoike.cinema`
+                }, {
+                    headers: supabaseHeaders(),
+                    timeout: 10000
+                });
+            } else {
+                throw dbErr;
+            }
+        }
+
         console.log(`📅 [Reminder Insert] Risposta Supabase: Stato ${response.status}`);
-        return res.status(response.status).json({ success: true, data: response.data[0] });
+        return res.status(response.status).json({ success: true, data: response.data ? response.data[0] : null });
     } catch (error) {
         console.error(`❌ [Reminder Insert] ERRORE:`, error.message);
         const status = error.response ? error.response.status : 500;
@@ -1060,116 +1079,7 @@ app.post('/api/webhook/github', express.raw({ type: 'application/json' }), async
 
 
 
-// =========================================
-// AVVISI / PROMEMORIA FILM (Supabase Integration)
-// =========================================
 
-// Recupera tutti i promemoria di un utente
-app.get('/api/reminders/:username', async (req, res) => {
-    const username = req.params.username;
-    console.log(`⏰ [Reminders Get] Richiesta promemoria per utente: '${username}'`);
-
-    try {
-        const response = await axios.get(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
-            params: {
-                username: `eq.${username}`,
-                order: 'created_at.desc',
-                select: '*'
-            },
-            headers: supabaseHeaders(),
-            timeout: 10000
-        });
-        console.log(`⏰ [Reminders Get] Risposta Supabase: Stato ${response.status}, Trovati: ${response.data.length}`);
-        return res.status(response.status).json(response.data);
-    } catch (error) {
-        console.error(`❌ [Reminders Get] ERRORE:`, error.message);
-        const status = error.response ? error.response.status : 500;
-        const data = error.response ? error.response.data : { error: error.message };
-        return res.status(status).json(data);
-    }
-});
-
-// Aggiunge un promemoria per un film
-app.post('/api/reminders', async (req, res) => {
-    let { username, tmdb_movie_id, title, poster_url, email } = req.body || {};
-    console.log(`⏰ [Reminders Post] Utente '${username}' inserisce per film ID ${tmdb_movie_id}`);
-
-    if (!username || !tmdb_movie_id) {
-        return res.status(400).json({ error: 'Username e tmdb_movie_id sono obbligatori' });
-    }
-
-    let release_date = null;
-
-    // Se mancano dati del film, recuperali da TMDb
-    if (!title || !poster_url || !release_date) {
-        try {
-            const tmdbRes = await axios.get(`${TMDB_BASE_URL}/movie/${tmdb_movie_id}`, {
-                params: { api_key: TMDB_API_KEY, language: 'it-IT' },
-                timeout: 8000
-            });
-            const movieData = tmdbRes.data;
-            if (!title && movieData.title) title = movieData.title;
-            if (!poster_url && movieData.poster_path) {
-                poster_url = `https://image.tmdb.org/t/p/w500${movieData.poster_path}`;
-            }
-            if (movieData.release_date) {
-                release_date = movieData.release_date; // YYYY-MM-DD
-            }
-        } catch (tmdbErr) {
-            console.error(`⚠️ [Reminders Post] Errore fetch TMDb per film ${tmdb_movie_id}:`, tmdbErr.message);
-        }
-    }
-
-    try {
-        const response = await axios.post(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
-            username,
-            tmdb_movie_id: parseInt(tmdb_movie_id),
-            title: title || 'Film Sconosciuto',
-            poster_url: poster_url || '',
-            release_date: release_date || null,
-            email: email || null,
-            notified: false
-        }, {
-            headers: supabaseHeaders(),
-            timeout: 10000
-        });
-        console.log(`⏰ [Reminders Post] Risposta Supabase: Stato ${response.status}`);
-        return res.status(response.status).json(response.data);
-    } catch (error) {
-        console.error(`❌ [Reminders Post] ERRORE:`, error.message);
-        const status = error.response ? error.response.status : 500;
-        const data = error.response ? error.response.data : { error: error.message };
-        // Rileva violazione di chiave unica
-        if (error.response && error.response.data && (error.response.data.code === '23505' || String(error.response.data.message).includes('duplicate'))) {
-            return res.status(409).json({ error: 'Avviso già inserito.' });
-        }
-        return res.status(status).json(data);
-    }
-});
-
-// Rimuove un promemoria per un film
-app.delete('/api/reminders/:username/:tmdb_movie_id', async (req, res) => {
-    const { username, tmdb_movie_id } = req.params;
-    console.log(`🗑️ [Reminders Delete] Richiesta rimozione avviso film ID ${tmdb_movie_id} per utente '${username}'`);
-
-    try {
-        const response = await axios.delete(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
-            params: {
-                username: `eq.${username}`,
-                tmdb_movie_id: `eq.${tmdb_movie_id}`
-            },
-            headers: supabaseHeaders(),
-            timeout: 10000
-        });
-        console.log(`🗑️ [Reminders Delete] Risposta Supabase: Stato ${response.status}`);
-        return res.status(response.status).json(response.data);
-    } catch (error) {
-        console.error(`❌ [Reminders Delete] ERRORE:`, error.message);
-        const status = error.response ? error.response.status : 500;
-        const data = error.response ? error.response.data : { error: error.message };
-        return res.status(status).json(data);
-    }
-});
 
 
 // =========================================================================
@@ -1178,16 +1088,31 @@ app.delete('/api/reminders/:username/:tmdb_movie_id', async (req, res) => {
 async function checkAndSendReleaseNotifications() {
     console.log("⏰ [Release Worker] Avvio controllo promemoria film in uscita...");
     try {
-        const response = await axios.get(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
-            params: {
-                notified: 'eq.false',
-                select: '*'
-            },
-            headers: supabaseHeaders(),
-            timeout: 15000
-        });
+        let reminders = [];
+        try {
+            const response = await axios.get(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+                params: {
+                    notified: 'eq.false',
+                    select: '*'
+                },
+                headers: supabaseHeaders(),
+                timeout: 15000
+            });
+            reminders = response.data || [];
+        } catch (dbErr) {
+            const dbErrMsg = dbErr.response && dbErr.response.data && dbErr.response.data.message
+                ? dbErr.response.data.message
+                : dbErr.message;
+            const isMissingNotified = dbErrMsg.includes("notified") || (dbErr.response && dbErr.response.data && dbErr.response.data.code === 'PGRST204');
+            
+            if (isMissingNotified) {
+                console.warn("⚠️ [Release Worker] Colonna 'notified' non configurata nel DB Supabase. Impossibile controllare promemoria non notificati.");
+                reminders = [];
+            } else {
+                throw dbErr;
+            }
+        }
 
-        const reminders = response.data || [];
         if (reminders.length === 0) {
             console.log("⏰ [Release Worker] Nessun promemoria da notificare.");
             return;
