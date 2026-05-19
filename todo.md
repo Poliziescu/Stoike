@@ -13,4 +13,4 @@
 - ricerca attori in like come ricerca princpale dei film
 - [x] Implementare tasto carica altri al fondo della schermata movies per caricare altri film
 - [x] Implementare riproduzione trailer con hovering del cursore
-- [ ] Implementare pagina per gestione proprio account
+- [x] Implementare pagina per gestione proprio account

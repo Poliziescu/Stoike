@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Stoike - Gestione Account</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
+    <script src="tailwind.config.js"></script>
+    <link href="style.css" rel="stylesheet" />
+</head>
+<body class="bg-background text-on-background min-h-screen pb-20 md:pb-0 font-sans">
+    <!-- TopNavBar -->
+    <nav class="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-outline-variant/10 text-primary-container">
+        <div class="flex justify-between items-center h-20 px-margin-mobile md:px-margin-desktop max-w-full mx-auto">
+            <div class="flex items-center gap-4">
+                <button id="menu-toggle" class="p-2 hover:bg-white/5 rounded-full transition-all text-primary-container flex items-center justify-center">
+                    <span class="material-symbols-outlined text-[28px]">menu</span>
+                </button>
+                <div id="site-logo" class="font-display-lg-mobile text-display-lg-mobile text-primary-container tracking-tight cursor-pointer hover:opacity-80 transition-opacity" onclick="window.location.href='/index.html'">
+                    Stoike
+                </div>
+            </div>
+            <div class="hidden md:flex items-center gap-md">
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/index.html" data-i18n="nav.movies">Movies</a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/genres.html" data-i18n="nav.genres">Genres</a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/actors.html" data-i18n="nav.actors">Actors</a>
+                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="#" data-i18n="nav.community">Community</a>
+            </div>
+            <div class="flex items-center gap-sm">
+                <!-- Search container removed for clean UI in account page, or kept static -->
+                <div class="relative" id="lang-selector-container">
+                    <button id="lang-dropdown-btn" class="flex items-center justify-center bg-black/60 border border-outline-variant/30 rounded-lg w-10 h-10 hover:bg-white/5 focus:border-primary-container focus:ring-0 outline-none cursor-pointer transition-colors">
+                        <img id="current-lang-flag" src="https://flagcdn.com/w20/it.png" alt="IT" class="w-6 h-auto rounded-sm">
+                    </button>
+                    <div id="lang-dropdown-menu" class="hidden absolute right-0 mt-2 w-14 bg-surface-container border border-outline-variant/20 rounded-lg shadow-2xl overflow-hidden z-50 flex-col">
+                        <button onclick="changeLanguage('it')" class="flex items-center justify-center w-full py-3 hover:bg-white/10 transition-colors border-b border-white/5"><img src="https://flagcdn.com/w20/it.png" alt="IT" class="w-6 h-auto rounded-sm"></button>
+                        <button onclick="changeLanguage('en')" class="flex items-center justify-center w-full py-3 hover:bg-white/10 transition-colors border-b border-white/5"><img src="https://flagcdn.com/w20/gb.png" alt="EN" class="w-6 h-auto rounded-sm"></button>
+                        <button onclick="changeLanguage('fr')" class="flex items-center justify-center w-full py-3 hover:bg-white/10 transition-colors border-b border-white/5"><img src="https://flagcdn.com/w20/fr.png" alt="FR" class="w-6 h-auto rounded-sm"></button>
+                        <button onclick="changeLanguage('es')" class="flex items-center justify-center w-full py-3 hover:bg-white/10 transition-colors border-b border-white/5"><img src="https://flagcdn.com/w20/es.png" alt="ES" class="w-6 h-auto rounded-sm"></button>
+                        <button onclick="changeLanguage('de')" class="flex items-center justify-center w-full py-3 hover:bg-white/10 transition-colors"><img src="https://flagcdn.com/w20/de.png" alt="DE" class="w-6 h-auto rounded-sm"></button>
+                    </div>
+                </div>
+                <button class="p-2 hover:bg-white/5 rounded-full transition-all">
+                    <span class="material-symbols-outlined text-primary-container" data-icon="notifications">notifications</span>
+                </button>
+                <button class="p-2 hover:bg-white/5 rounded-full transition-all">
+                    <span class="material-symbols-outlined text-primary-container" data-icon="bookmark">bookmark</span>
+                </button>
+                <!-- Clickable Avatar -->
+                <div class="w-10 h-10 rounded-full overflow-hidden ml-2 border border-outline-variant/20 cursor-pointer hover:opacity-80 transition-opacity">
+                    <img id="header-user-avatar" alt="User profile avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3" />
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Sidebar Drawer Backdrop -->
+    <div id="sidebar-trigger" class="fixed left-0 top-0 bottom-0 w-6 z-[80] bg-transparent"></div>
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[90] hidden opacity-0 transition-all duration-300"></div>
+
+    <!-- Sidebar Drawer -->
+    <aside id="sidebar" class="flex flex-col fixed left-0 top-0 bottom-0 z-[100] w-64 border-r border-outline-variant/10 bg-background/95 backdrop-blur-xl text-primary-container font-body-md text-body-md -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl py-6">
+        <div class="px-md mb-lg flex justify-between items-center">
+            <div>
+                <div class="font-headline-sm text-primary-container mb-1" data-i18n="sidebar.catalog">Catalogo</div>
+                <div class="text-on-surface-variant font-label-sm text-label-sm" data-i18n="sidebar.browseBy">Sfoglia per Categoria</div>
+            </div>
+            <button id="sidebar-close" class="p-2 hover:bg-white/5 rounded-full text-on-surface-variant hover:text-white transition-all flex items-center justify-center">
+                <span class="material-symbols-outlined text-[24px]">chevron_left</span>
+            </button>
+        </div>
+        <nav class="flex-1 flex flex-col gap-2 px-sm">
+            <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" href="/index.html">
+                <span class="material-symbols-outlined">trending_up</span>
+                <span data-i18n="sidebar.trending">Tendenza</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" href="/list.html?type=top_rated">
+                <span class="material-symbols-outlined">star</span>
+                <span data-i18n="sidebar.topRated">Più Votati</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" href="/list.html?type=new_releases">
+                <span class="material-symbols-outlined">new_releases</span>
+                <span data-i18n="sidebar.newReleases">Nuove Uscite</span>
+            </a>
+            <a class="flex items-center gap-3 px-4 py-3 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors" href="/list.html?type=coming_soon">
+                <span class="material-symbols-outlined">upcoming</span>
+                <span data-i18n="sidebar.comingSoon">Prossimamente</span>
+            </a>
+        </nav>
+        <div class="p-md mt-auto">
+            <div id="auth-container">
+                <button id="auth-btn" onclick="openAuthModal()" class="w-full py-3 bg-primary-container text-black font-label-md text-label-md rounded hover:bg-primary transition-colors flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">login</span> <span data-i18n="auth.loginRegister">Login / Registrati</span>
+                </button>
+                <div id="user-info" class="hidden flex flex-col gap-2">
+                    <div class="text-on-surface-variant font-label-md text-center bg-surface-container-high py-2 rounded-lg"><span data-i18n="auth.welcome">Benvenuto,</span> <span id="current-username" class="text-primary-container font-bold"></span></div>
+                    <button onclick="logoutUser()" class="w-full py-2 border border-outline-variant/30 text-on-surface-variant font-label-sm rounded hover:bg-white/5 transition-colors" data-i18n="auth.logout">Logout</button>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main Content Canvas -->
+    <main class="min-h-screen pt-28 pb-12 flex items-center justify-center px-4 md:px-8">
+        <div class="w-full max-w-xl bg-surface-container/30 backdrop-blur-xl border border-outline-variant/15 rounded-3xl p-6 md:p-8 shadow-2xl relative overflow-hidden transition-all duration-500 hover:shadow-primary-container/5 hover:border-outline-variant/30">
+            <!-- Glow background effect -->
+            <div class="absolute -top-40 -right-40 w-80 h-80 bg-primary-container/10 rounded-full blur-[100px] pointer-events-none"></div>
+            <div class="absolute -bottom-40 -left-40 w-80 h-80 bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
+
+            <!-- Page Title -->
+            <div class="flex items-center gap-3 mb-8 border-b border-outline-variant/10 pb-4 relative z-10">
+                <span class="material-symbols-outlined text-[32px] text-primary-container material-fill-1">manage_accounts</span>
+                <div>
+                    <h1 class="text-headline-md font-headline-md text-white font-bold tracking-tight" data-i18n="account.title">Gestione Account</h1>
+                    <p class="text-on-surface-variant text-label-md font-label-md mt-1" data-i18n="account.subtitle">Personalizza il tuo profilo di Stoike</p>
+                </div>
+            </div>
+
+            <!-- Form Container -->
+            <form id="profile-form" class="flex flex-col gap-6 relative z-10">
+                <!-- Status Messages -->
+                <div id="profile-status" class="hidden px-4 py-3.5 rounded-xl border font-body-md text-body-md transition-all duration-300 text-center shadow-lg"></div>
+
+                <!-- Profile Avatar Uploader -->
+                <div class="flex flex-col items-center gap-4 py-4 bg-black/25 rounded-2xl border border-outline-variant/5">
+                    <div class="relative w-28 h-28 rounded-full overflow-hidden border-2 border-primary-container/30 shadow-2xl group cursor-pointer hover:border-primary-container transition-colors duration-300" onclick="triggerAvatarUpload()">
+                        <img id="profile-avatar-preview" alt="Anteprima avatar" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3" />
+                        <div class="absolute inset-0 bg-black/60 flex flex-col items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                            <span class="material-symbols-outlined text-[24px] text-primary-container">photo_camera</span>
+                            <span class="text-[9px] uppercase font-bold text-white tracking-wider" data-i18n="account.changePhoto">Cambia foto</span>
+                        </div>
+                    </div>
+                    <div class="text-center">
+                        <button type="button" onclick="triggerAvatarUpload()" class="px-4 py-2 bg-surface-container-high hover:bg-surface-container-highest border border-outline-variant/20 rounded-xl font-label-md text-label-md text-white transition-colors flex items-center gap-2 mx-auto">
+                            <span class="material-symbols-outlined text-[18px]">upload</span>
+                            <span data-i18n="account.uploadBtn">Carica foto</span>
+                        </button>
+                        <input id="avatar-input" type="file" accept="image/*" class="hidden" onchange="previewAvatar(event)">
+                        <p class="text-[11px] text-on-surface-variant mt-2" data-i18n="account.photoSpecs">Formati supportati: PNG, JPG. Max 5MB.</p>
+                    </div>
+                </div>
+
+                <!-- Username (Readonly) -->
+                <div>
+                    <label class="block font-label-md text-label-md text-on-surface-variant mb-2" data-i18n="account.username">Username</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-on-surface-variant/50 text-[20px]">person</span>
+                        <input id="profile-username" type="text" readonly disabled class="w-full bg-black/20 border border-outline-variant/20 rounded-xl pl-11 pr-4 py-3.5 text-on-surface-variant font-body-md text-body-md cursor-not-allowed select-none focus:ring-0 outline-none" />
+                    </div>
+                    <p class="text-[11px] text-on-surface-variant/60 mt-1.5 pl-1" data-i18n="account.usernameImmutable">L'username è immutabile e serve per l'autenticazione.</p>
+                </div>
+
+                <!-- Nickname (Unique) -->
+                <div>
+                    <label class="block font-label-md text-label-md text-on-surface-variant mb-2" data-i18n="account.nickname">Nickname Personalizzato</label>
+                    <div class="relative">
+                        <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-primary-container text-[20px] material-fill-1">badge</span>
+                        <input id="profile-nickname" type="text" required placeholder="Es. MikeTheCritic" data-i18n-placeholder="account.nicknamePlaceholder" class="w-full bg-black/50 border border-outline-variant/30 rounded-xl pl-11 pr-4 py-3.5 text-white font-body-md text-body-md focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all outline-none" />
+                    </div>
+                    <p class="text-[11px] text-on-surface-variant mt-1.5 pl-1" data-i18n="account.nicknameSpecs">Il tuo nome pubblico visibile nei forum e nelle recensioni. Deve essere unico.</p>
+                </div>
+
+                <!-- Actions Controls -->
+                <div class="flex flex-col sm:flex-row gap-3 mt-6 border-t border-outline-variant/10 pt-6">
+                    <!-- Save Button -->
+                    <button type="submit" id="save-btn" class="flex-1 py-3.5 bg-primary-container text-black font-label-md text-label-md font-bold rounded-xl hover:bg-primary transition-colors flex items-center justify-center gap-2 shadow-lg shadow-primary-container/10 cursor-pointer">
+                        <span class="material-symbols-outlined material-fill-1">save</span>
+                        <span data-i18n="account.save">Salva</span>
+                    </button>
+                    <!-- Cancel Button -->
+                    <button type="button" id="cancel-btn" onclick="resetForm()" class="flex-1 py-3.5 bg-surface-container border border-outline-variant/20 text-white font-label-md text-label-md rounded-xl hover:bg-surface-container-high transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined">restart_alt</span>
+                        <span data-i18n="account.cancel">Annulla</span>
+                    </button>
+                    <!-- Go Back Button -->
+                    <button type="button" id="goback-btn" onclick="window.location.href='/index.html'" class="py-3.5 px-5 bg-black/40 border border-white/5 text-on-surface-variant font-label-md text-label-md rounded-xl hover:text-white hover:bg-white/5 transition-colors flex items-center justify-center gap-2 cursor-pointer">
+                        <span class="material-symbols-outlined">arrow_back</span>
+                        <span data-i18n="account.goBack">Torna Indietro</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
+
+    <!-- BottomNavBar -->
+    <nav class="md:hidden flex justify-around items-center h-16 pb-safe w-full fixed bottom-0 z-50 rounded-t-xl bg-surface-container-lowest/90 backdrop-blur-2xl border-t border-outline-variant/20 shadow-xl text-primary-container font-label-sm text-label-sm">
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/index.html">
+            <span class="material-symbols-outlined">home</span>
+            <span data-i18n="bottomNav.home">Home</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/list.html?type=top_rated">
+            <span class="material-symbols-outlined">search</span>
+            <span data-i18n="bottomNav.search">Cerca</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="#">
+            <span class="material-symbols-outlined">movie_filter</span>
+            <span data-i18n="bottomNav.watchlist">Watchlist</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-primary-container drop-shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:opacity-100 scale-110 duration-200" href="/account.html">
+            <span class="material-symbols-outlined">person</span>
+            <span data-i18n="bottomNav.profile">Profilo</span>
+        </a>
+    </nav>
+
+    <!-- Support FAB Button -->
+    <button id="support-fab" class="fixed bottom-24 md:bottom-8 right-6 z-50 w-14 h-14 rounded-full bg-primary-container text-on-primary-container shadow-lg hover:bg-primary-fixed-dim transition-all duration-300 flex items-center justify-center hover:scale-110 active:scale-95" title="Segnala un problema">
+        <span class="material-symbols-outlined text-[28px]">support_agent</span>
+    </button>
+
+    <!-- Support Modal -->
+    <div id="support-modal" class="fixed inset-0 z-[100] hidden items-center justify-center">
+        <div id="support-backdrop" class="absolute inset-0 bg-black/70 backdrop-blur-sm"></div>
+        <div class="relative w-[90%] max-w-lg mx-auto glass-panel border border-white/10 rounded-xl p-8 shadow-2xl">
+            <button id="support-close" class="absolute top-4 right-4 text-on-surface-variant hover:text-white transition-colors">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+            <h2 class="font-headline-sm text-headline-sm text-primary-container mb-2 flex items-center gap-2">
+                <span class="material-symbols-outlined material-fill-1">bug_report</span>
+                <span data-i18n="support.title">Segnala un problema</span>
+            </h2>
+            <p class="text-on-surface-variant font-label-sm text-label-sm mb-6" data-i18n="support.subtitle">Descrivici il problema riscontrato e lo risolveremo al più presto.</p>
+            <form id="support-form" class="flex flex-col gap-4">
+                <input id="support-title" type="text" required placeholder="Titolo del problema (breve e chiaro)" class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md" data-i18n-placeholder="support.titleInput" />
+                <input id="support-email" type="email" placeholder="La tua email per aggiornamenti (opzionale)" class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md" data-i18n-placeholder="support.emailInput" />
+                <textarea id="support-message" required rows="5" placeholder="Descrivi il problema nel dettaglio..." class="bg-surface-container border border-outline-variant/30 rounded-lg px-4 py-3 text-on-background focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-colors font-body-md text-body-md resize-none" data-i18n-placeholder="support.messageInput"></textarea>
+                <div id="support-status" class="hidden px-4 py-3 rounded-lg border font-body-md text-body-md transition-all duration-300"></div>
+                <button type="submit" id="support-submit" class="px-6 py-3 bg-primary-container text-black font-label-md text-label-md rounded-lg hover:bg-primary-fixed-dim transition-colors flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined text-[20px]">send</span> <span data-i18n="support.submit">Invia segnalazione</span>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Setup translation resources and core logic scripts -->
+    <script src="i18n.js"></script>
+    <script src="common.js"></script>
+    <script src="account.js"></script>
+</body>
+</html>

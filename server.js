@@ -29,7 +29,7 @@ app.use((req, res, next) => {
     if (req.originalUrl === '/api/webhook/github') {
         next();
     } else {
-        express.json()(req, res, next);
+        express.json({ limit: '15mb' })(req, res, next);
     }
 });
 
@@ -87,6 +87,14 @@ app.get('/list', (req, res) => {
 });
 app.get('/list.html', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'list.html'));
+});
+
+// Gestione Profilo / Account
+app.get('/account', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'account.html'));
+});
+app.get('/account.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'account.html'));
 });
 
 
@@ -174,6 +182,189 @@ app.post('/api/auth/register', async (req, res) => {
         const data = error.response ? error.response.data : { error: error.message };
         return res.status(status).json(data);
     }
+});
+
+
+// =========================================
+// GESTIONE PROFILO UTENTE (con fallback locale)
+// =========================================
+
+// Assicura che la directory degli upload per gli avatar esista
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const localProfilesPath = path.join(__dirname, 'user_profiles.json');
+
+function getLocalProfiles() {
+    try {
+        if (fs.existsSync(localProfilesPath)) {
+            const data = fs.readFileSync(localProfilesPath, 'utf8');
+            return JSON.parse(data) || {};
+        }
+    } catch (err) {
+        console.error("❌ Errore nella lettura dei profili locali:", err.message);
+    }
+    return {};
+}
+
+function saveLocalProfile(username, profileData) {
+    try {
+        const profiles = getLocalProfiles();
+        profiles[username] = {
+            ...profiles[username],
+            ...profileData
+        };
+        fs.writeFileSync(localProfilesPath, JSON.stringify(profiles, null, 2), 'utf8');
+        return true;
+    } catch (err) {
+        console.error("❌ Errore nel salvataggio del profilo locale:", err.message);
+        return false;
+    }
+}
+
+// GET: Recupera profilo utente
+app.get('/api/user/profile', async (req, res) => {
+    const { username } = req.query;
+    console.log(`👤 [Profile Get] Richiesta profilo per: '${username}'`);
+    if (!username) {
+        return res.status(400).json({ success: false, message: 'Username obbligatorio' });
+    }
+
+    try {
+        // 1. Tenta query Supabase REST
+        const response = await axios.get(`${SUPABASE_URL}/rest/v1/users`, {
+            params: {
+                username: `eq.${username}`,
+                select: 'username,role,nickname,avatar_url'
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+
+        if (response.data && response.data.length > 0) {
+            const user = response.data[0];
+            return res.json({
+                success: true,
+                username: user.username,
+                role: user.role,
+                nickname: user.nickname || '',
+                avatar_url: user.avatar_url || ''
+            });
+        } else {
+            return res.status(404).json({ success: false, message: 'Utente non trovato' });
+        }
+    } catch (error) {
+        // Fallback locale in caso di colonne mancanti o database offline
+        console.warn(`⚠️ [Profile Get] Errore Supabase o colonne mancanti. Fallback locale per '${username}':`, error.message);
+        
+        const localProfiles = getLocalProfiles();
+        const localUser = localProfiles[username];
+        
+        return res.json({
+            success: true,
+            username: username,
+            role: 'user',
+            nickname: localUser ? (localUser.nickname || '') : '',
+            avatar_url: localUser ? (localUser.avatar_url || '') : ''
+        });
+    }
+});
+
+// POST: Salva / Aggiorna profilo utente
+app.post('/api/user/profile', async (req, res) => {
+    const { username, nickname, avatar_data } = req.body || {};
+    console.log(`👤 [Profile Update] Richiesta aggiornamento profilo per: '${username}', nickname: '${nickname}'`);
+    
+    if (!username) {
+        return res.status(400).json({ success: false, message: 'Username obbligatorio.' });
+    }
+
+    let finalNickname = nickname ? nickname.trim() : '';
+
+    // 1. Verifica dell'unicità del nickname
+    if (finalNickname) {
+        try {
+            // Controlla su Supabase REST
+            const response = await axios.get(`${SUPABASE_URL}/rest/v1/users`, {
+                params: {
+                    nickname: `eq.${finalNickname}`,
+                    username: `neq.${username}`,
+                    select: 'username'
+                },
+                headers: supabaseHeaders(),
+                timeout: 5000
+            });
+            if (response.data && response.data.length > 0) {
+                return res.status(400).json({ success: false, message: 'Questo nickname è già in uso da un altro utente.' });
+            }
+        } catch (error) {
+            console.warn(`⚠️ [Profile Update] Errore unicità nickname Supabase. Fallback locale:`, error.message);
+            // Fallback locale per verificare l'unicità
+            const localProfiles = getLocalProfiles();
+            const exists = Object.keys(localProfiles).some(u => 
+                u !== username && localProfiles[u].nickname && localProfiles[u].nickname.toLowerCase() === finalNickname.toLowerCase()
+            );
+            if (exists) {
+                return res.status(400).json({ success: false, message: 'Questo nickname è già in uso da un altro utente.' });
+            }
+        }
+    }
+
+    let avatarUrl = null;
+
+    // 2. Decodifica e salvataggio dell'immagine profilo base64
+    if (avatar_data) {
+        try {
+            const matches = avatar_data.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+            if (!matches || matches.length !== 3) {
+                return res.status(400).json({ success: false, message: 'Formato immagine non valido.' });
+            }
+            const ext = matches[1];
+            const base64Data = matches[2];
+            const buffer = Buffer.from(base64Data, 'base64');
+            
+            const filename = `avatar_${username.toLowerCase()}_${Date.now()}.${ext}`;
+            const filepath = path.join(uploadsDir, filename);
+            
+            fs.writeFileSync(filepath, buffer);
+            avatarUrl = `/uploads/${filename}`;
+            console.log(`💾 [Profile Update] Avatar salvato localmente: ${avatarUrl}`);
+        } catch (err) {
+            console.error("❌ Errore nel salvataggio dell'immagine:", err.message);
+            return res.status(500).json({ success: false, message: 'Impossibile salvare l\'immagine del profilo.' });
+        }
+    }
+
+    // 3. Esegui aggiornamento
+    const updateData = {};
+    if (finalNickname !== undefined) updateData.nickname = finalNickname;
+    if (avatarUrl) updateData.avatar_url = avatarUrl;
+
+    try {
+        // Tenta salvataggio su Supabase REST
+        const response = await axios.patch(`${SUPABASE_URL}/rest/v1/users`, updateData, {
+            params: {
+                username: `eq.${username}`
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`👤 [Profile Update] Supabase salvato con successo per '${username}'`);
+    } catch (error) {
+        console.warn(`⚠️ [Profile Update] Impossibile salvare in Supabase (colonne mancanti o errore). Fallback locale per '${username}':`, error.message);
+    }
+
+    // Salviamo SEMPRE anche in locale per garantire massima consistenza e funzionamento immediato
+    saveLocalProfile(username, updateData);
+
+    return res.json({
+        success: true,
+        message: 'Profilo salvato con successo!',
+        nickname: finalNickname,
+        avatar_url: avatarUrl || undefined
+    });
 });
 
 
