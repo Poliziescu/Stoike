@@ -29,6 +29,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     originalProfile.username = username;
 
+    // Popola immediatamente dalla cache di localStorage per rendering istantaneo
+    const cachedNickname = localStorage.getItem('stoike_nickname');
+    const cachedAvatar = localStorage.getItem('stoike_avatar');
+    
+    const nicknameInput = document.getElementById('profile-nickname');
+    if (nicknameInput && cachedNickname) {
+        nicknameInput.value = cachedNickname;
+        originalProfile.nickname = cachedNickname;
+    }
+    
+    const avatarPreview = document.getElementById('profile-avatar-preview');
+    if (avatarPreview && cachedAvatar) {
+        avatarPreview.src = cachedAvatar;
+        originalProfile.avatar_url = cachedAvatar;
+    }
+
     // 3. Recupera dati del profilo dal server
     await loadUserProfile(username);
 
@@ -49,7 +65,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 // Carica il profilo dal server
 async function loadUserProfile(username) {
     try {
-        const response = await fetch(`/api/user/profile?username=${encodeURIComponent(username)}`);
+        const response = await fetch(`/api/user/profile?username=${encodeURIComponent(username)}&_t=${Date.now()}`);
         const data = await response.json();
         
         if (data && data.success) {

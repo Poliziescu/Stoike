@@ -98,7 +98,7 @@ async function checkAuthState() {
         }
 
         // Recupera in parallelo dal server per aggiornare la cache ed evitare sfasamenti
-        fetch(`/api/user/profile?username=${encodeURIComponent(u)}`)
+        fetch(`/api/user/profile?username=${encodeURIComponent(u)}&_t=${Date.now()}`)
             .then(res => res.json())
             .then(data => {
                 if (data && data.success) {

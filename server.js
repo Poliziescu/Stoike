@@ -209,11 +209,19 @@ function getLocalProfiles() {
     return {};
 }
 
+function getLocalProfileCaseInsensitive(username) {
+    const profiles = getLocalProfiles();
+    if (!username) return {};
+    const key = Object.keys(profiles).find(k => k.toLowerCase() === username.toLowerCase());
+    return key ? profiles[key] : {};
+}
+
 function saveLocalProfile(username, profileData) {
     try {
         const profiles = getLocalProfiles();
-        profiles[username] = {
-            ...profiles[username],
+        const key = Object.keys(profiles).find(k => k.toLowerCase() === username.toLowerCase()) || username;
+        profiles[key] = {
+            ...profiles[key],
             ...profileData
         };
         fs.writeFileSync(localProfilesPath, JSON.stringify(profiles, null, 2), 'utf8');
@@ -245,29 +253,39 @@ app.get('/api/user/profile', async (req, res) => {
 
         if (response.data && response.data.length > 0) {
             const user = response.data[0];
+            const localUser = getLocalProfileCaseInsensitive(username);
+            
             return res.json({
                 success: true,
                 username: user.username,
                 role: user.role,
-                nickname: user.nickname || '',
-                avatar_url: user.avatar_url || ''
+                nickname: localUser.nickname || user.nickname || '',
+                avatar_url: localUser.avatar_url || user.avatar_url || ''
             });
         } else {
-            return res.status(404).json({ success: false, message: 'Utente non trovato' });
+            console.log(`👤 [Profile Get] Utente '${username}' non trovato in Supabase. Fallback locale.`);
+            const localUser = getLocalProfileCaseInsensitive(username);
+            
+            return res.json({
+                success: true,
+                username: username,
+                role: 'user',
+                nickname: localUser.nickname || '',
+                avatar_url: localUser.avatar_url || ''
+            });
         }
     } catch (error) {
         // Fallback locale in caso di colonne mancanti o database offline
         console.warn(`⚠️ [Profile Get] Errore Supabase o colonne mancanti. Fallback locale per '${username}':`, error.message);
         
-        const localProfiles = getLocalProfiles();
-        const localUser = localProfiles[username];
+        const localUser = getLocalProfileCaseInsensitive(username);
         
         return res.json({
             success: true,
             username: username,
             role: 'user',
-            nickname: localUser ? (localUser.nickname || '') : '',
-            avatar_url: localUser ? (localUser.avatar_url || '') : ''
+            nickname: localUser.nickname || '',
+            avatar_url: localUser.avatar_url || ''
         });
     }
 });
@@ -359,11 +377,14 @@ app.post('/api/user/profile', async (req, res) => {
     // Salviamo SEMPRE anche in locale per garantire massima consistenza e funzionamento immediato
     saveLocalProfile(username, updateData);
 
+    // Recuperiamo il profilo aggiornato per restituire i dati definitivi completi
+    const finalProfile = getLocalProfileCaseInsensitive(username);
+
     return res.json({
         success: true,
         message: 'Profilo salvato con successo!',
-        nickname: finalNickname,
-        avatar_url: avatarUrl || undefined
+        nickname: finalProfile.nickname || finalNickname,
+        avatar_url: finalProfile.avatar_url || undefined
     });
 });
 
