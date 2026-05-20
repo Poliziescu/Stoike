@@ -247,7 +247,32 @@ app.get('/api/user/profile', async (req, res) => {
     }
 
     try {
-        // 1. Tenta query Supabase REST
+        // 1. Tenta prima tramite la RPC get_user_profile per bypassare RLS in modo sicuro
+        try {
+            const rpcResponse = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/get_user_profile`, {
+                p_username: username
+            }, {
+                headers: supabaseHeaders(),
+                timeout: 5000
+            });
+
+            if (rpcResponse.data && rpcResponse.data.length > 0) {
+                const user = rpcResponse.data[0];
+                const localUser = getLocalProfileCaseInsensitive(username);
+                console.log(`👤 [Profile Get] Trovato profilo tramite RPC per '${username}'`);
+                return res.json({
+                    success: true,
+                    username: user.username,
+                    role: user.role || 'user',
+                    nickname: localUser.nickname || user.nickname || '',
+                    avatar_url: localUser.avatar_url || user.avatar_url || ''
+                });
+            }
+        } catch (rpcError) {
+            console.log(`⚠️ [Profile Get] RPC get_user_profile non disponibile o errore: ${rpcError.message}. Provo query diretta REST...`);
+        }
+
+        // 2. Tenta query Supabase REST diretta (fallback)
         const response = await axios.get(`${SUPABASE_URL}/rest/v1/users`, {
             params: {
                 username: `eq.${username}`,
@@ -280,6 +305,7 @@ app.get('/api/user/profile', async (req, res) => {
                 avatar_url: localUser.avatar_url || ''
             });
         }
+
     } catch (error) {
         // Fallback locale in caso di colonne mancanti o database offline
         console.warn(`⚠️ [Profile Get] Errore Supabase o colonne mancanti. Fallback locale per '${username}':`, error.message);
@@ -365,26 +391,63 @@ app.post('/api/user/profile', async (req, res) => {
     }
 
     // 3. Esegui aggiornamento
-    const updateData = {};
-    if (finalNickname !== undefined) updateData.nickname = finalNickname;
-    if (avatarUrl) updateData.avatar_url = avatarUrl;
+    const updateDataDB = {};
+    if (finalNickname !== undefined) updateDataDB.nickname = finalNickname;
+    // Salviamo l'intera stringa base64 dell'immagine su Supabase in modo che la foto sia effettivamente nel DB
+    if (avatar_data) {
+        updateDataDB.avatar_url = avatar_data;
+    } else if (avatarUrl) {
+        updateDataDB.avatar_url = avatarUrl;
+    }
+
+    // Per il file JSON locale salviamo solo il percorso relativo per non appesantirlo
+    const updateDataLocal = {};
+    if (finalNickname !== undefined) updateDataLocal.nickname = finalNickname;
+    if (avatarUrl) updateDataLocal.avatar_url = avatarUrl;
 
     try {
-        // Tenta salvataggio su Supabase REST
-        const response = await axios.patch(`${SUPABASE_URL}/rest/v1/users`, updateData, {
-            params: {
-                username: `eq.${username}`
-            },
-            headers: supabaseHeaders(),
-            timeout: 10000
-        });
-        console.log(`👤 [Profile Update] Supabase salvato con successo per '${username}'`);
+        let savedInSupabase = false;
+
+        // 3.1 Tenta prima tramite la RPC update_user_profile per bypassare RLS in modo sicuro
+        try {
+            const rpcResponse = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/update_user_profile`, {
+                p_username: username,
+                p_nickname: finalNickname || null,
+                p_avatar_url: avatar_data || avatarUrl || null
+            }, {
+                headers: supabaseHeaders(),
+                timeout: 5000
+            });
+
+            if (rpcResponse.data) {
+                const result = rpcResponse.data;
+                if (result.success === false) {
+                    return res.status(400).json({ success: false, message: result.message || 'Errore durante il salvataggio.' });
+                }
+                console.log(`👤 [Profile Update] Supabase salvato con successo tramite RPC per '${username}' (Foto salvata nel DB!)`);
+                savedInSupabase = true;
+            }
+        } catch (rpcError) {
+            console.log(`⚠️ [Profile Update] RPC update_user_profile non disponibile o errore: ${rpcError.message}. Provo patch diretta REST...`);
+        }
+
+        if (!savedInSupabase) {
+            // 3.2 Tenta salvataggio su Supabase REST diretto (fallback)
+            await axios.patch(`${SUPABASE_URL}/rest/v1/users`, updateDataDB, {
+                params: {
+                    username: `eq.${username}`
+                },
+                headers: supabaseHeaders(),
+                timeout: 10000
+            });
+            console.log(`👤 [Profile Update] Supabase salvato con successo tramite PATCH per '${username}' (Foto salvata nel DB!)`);
+        }
     } catch (error) {
         console.warn(`⚠️ [Profile Update] Impossibile salvare in Supabase (colonne mancanti o errore). Fallback locale per '${username}':`, error.message);
     }
 
     // Salviamo SEMPRE anche in locale per garantire massima consistenza e funzionamento immediato
-    saveLocalProfile(username, updateData);
+    saveLocalProfile(username, updateDataLocal);
 
     // Recuperiamo il profilo aggiornato per restituire i dati definitivi completi
     const finalProfile = getLocalProfileCaseInsensitive(username);
@@ -393,7 +456,7 @@ app.post('/api/user/profile', async (req, res) => {
         success: true,
         message: 'Profilo salvato con successo!',
         nickname: finalProfile.nickname || finalNickname,
-        avatar_url: finalProfile.avatar_url || undefined
+        avatar_url: avatar_data || finalProfile.avatar_url || avatarUrl || undefined
     });
 });
 
@@ -449,7 +512,6 @@ app.delete('/api/user/account', async (req, res) => {
 
     return res.json({ success: true, message: 'Account eliminato con successo!' });
 });
-
 
 // =========================================
 // RECENSIONI (Supabase integration)
