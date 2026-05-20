@@ -1071,7 +1071,7 @@ function setupGlobalNotificationsBehavior() {
         if (!badge) {
             badge = document.createElement('span');
             badge.id = 'nav-notifications-badge';
-            badge.className = 'notifications-badge hidden absolute top-0.5 right-0.5 bg-red-500 text-white font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border border-background z-10';
+            badge.className = 'notifications-badge hidden absolute top-0.5 right-0.5 bg-red-500 text-white font-bold text-[9px] w-5 h-5 rounded-full flex items-center justify-center border border-background z-10';
             btn.appendChild(badge);
         }
     });
@@ -1088,47 +1088,53 @@ function injectMobileSearchOverlay() {
     overlayDiv.id = 'mobile-search-overlay';
     overlayDiv.className = 'fixed inset-0 z-[9999] bg-background/95 backdrop-blur-2xl hidden flex-col p-6 transition-all duration-300 opacity-0';
     overlayDiv.innerHTML = `
-        <div class="flex justify-between items-center mb-6">
-            <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-primary-container text-[28px]">search</span>
-                <span class="text-xl font-bold text-white" data-i18n="bottomNav.search">Cerca nel Catalogo</span>
+        <div class="flex justify-between items-center mb-8">
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-primary-container text-[32px]">movie_filter</span>
+                <div>
+                    <span class="text-xl font-bold text-white block" data-i18n="bottomNav.search">Cerca nel Catalogo</span>
+                    <span class="text-xs text-on-surface-variant/70">Film, attori e molto altro</span>
+                </div>
             </div>
-            <button onclick="closeMobileSearchOverlay()" class="p-2 hover:bg-white/5 rounded-full text-on-surface-variant hover:text-white transition-colors">
-                <span class="material-symbols-outlined text-[28px]">close</span>
+            <button onclick="closeMobileSearchOverlay()" class="p-2.5 hover:bg-white/10 rounded-full text-on-surface-variant hover:text-white transition-colors bg-white/5">
+                <span class="material-symbols-outlined text-[26px]">close</span>
             </button>
         </div>
-        <div class="flex flex-col gap-4 font-headline-sm">
-            <div class="flex gap-2">
-                <div class="relative flex-grow">
-                    <input id="mobile-search-input" class="w-full bg-black/60 border border-outline-variant/30 rounded-xl px-4 py-3 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors text-base" placeholder="Cerca film..." type="text" autocomplete="off" data-i18n-placeholder="search.placeholder" />
-                    <span class="material-symbols-outlined absolute right-3 top-3.5 text-on-surface-variant cursor-pointer text-[22px]" onclick="executeMobileSearch()">search</span>
-                </div>
-                <div class="relative w-24">
-                    <input id="mobile-search-year-input" type="text" class="w-full bg-black/60 border border-outline-variant/30 rounded-xl px-2 py-3 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors text-center text-base cursor-pointer" placeholder="Anno" data-i18n-placeholder="search.year" autocomplete="off" readonly />
-                </div>
+        <div class="flex flex-col gap-5 font-headline-sm">
+            <!-- Search input with icon -->
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-[22px] pointer-events-none">search</span>
+                <input id="mobile-search-input" class="w-full bg-white/5 border border-outline-variant/20 rounded-2xl pl-12 pr-4 py-4 text-white focus:border-primary-container focus:ring-0 focus:bg-white/8 outline-none transition-all text-base placeholder:text-on-surface-variant/50" placeholder="Cerca film..." type="text" autocomplete="off" data-i18n-placeholder="search.placeholder" />
+            </div>
+
+            <!-- Year selector with icon -->
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant/60 text-[22px] pointer-events-none">calendar_today</span>
+                <input id="mobile-search-year-input" type="text" class="w-full bg-white/5 border border-outline-variant/20 rounded-2xl pl-12 pr-12 py-4 text-white focus:border-primary-container focus:ring-0 focus:bg-white/8 outline-none transition-all text-base cursor-pointer placeholder:text-on-surface-variant/50" placeholder="Filtra per Anno di uscita" autocomplete="off" readonly />
+                <span class="material-symbols-outlined absolute right-4 top-1/2 -translate-y-1/2 text-on-surface-variant/40 text-[22px] pointer-events-none">arrow_drop_down</span>
             </div>
             
             <!-- Mobile Year Picker Dropdown -->
-            <div id="mobile-year-picker-dropdown" class="hidden flex-col bg-surface-container/95 border border-outline-variant/20 rounded-2xl p-4 shadow-2xl">
+            <div id="mobile-year-picker-dropdown" class="hidden flex-col bg-surface-container border border-outline-variant/15 rounded-2xl p-5 shadow-2xl">
                 <div class="flex justify-between items-center mb-4">
-                    <button id="myp-prev" class="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">chevron_left</span></button>
-                    <span id="myp-decade-label" class="font-bold text-white text-base"></span>
-                    <button id="myp-next" class="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">chevron_right</span></button>
+                    <button id="myp-prev" class="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"><span class="material-symbols-outlined text-[22px]">chevron_left</span></button>
+                    <span id="myp-decade-label" class="font-bold text-white text-base tracking-wide"></span>
+                    <button id="myp-next" class="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"><span class="material-symbols-outlined text-[22px]">chevron_right</span></button>
                 </div>
                 <div id="myp-grid" class="grid grid-cols-5 gap-2"></div>
-                <div class="mt-4 pt-2 border-t border-outline-variant/10 text-center flex justify-between">
-                    <button id="myp-clear" class="text-sm text-red-400 hover:text-red-300 transition-colors" data-i18n="search.clearYear">Pulisci</button>
+                <div class="mt-4 pt-3 border-t border-outline-variant/10 flex justify-between items-center">
+                    <button id="myp-clear" class="text-sm text-red-400 hover:text-red-300 transition-colors font-medium" data-i18n="search.clearYear">Pulisci</button>
                     <button id="myp-close" class="text-sm text-primary-container hover:underline transition-colors font-bold">Ok</button>
                 </div>
             </div>
 
             <!-- Mobile Suggestions Box -->
-            <div id="mobile-search-suggestions" class="hidden flex-col bg-surface-container/40 border border-outline-variant/10 rounded-2xl shadow-xl overflow-hidden max-h-[300px] overflow-y-auto">
+            <div id="mobile-search-suggestions" class="hidden flex-col bg-surface-container/50 border border-outline-variant/10 rounded-2xl shadow-xl overflow-hidden max-h-[300px] overflow-y-auto">
                 <!-- Suggestions will be injected here -->
             </div>
             
-            <button onclick="executeMobileSearch()" class="w-full py-4 mt-2 bg-primary-container text-black font-bold rounded-xl hover:bg-primary transition-all duration-300 shadow-lg shadow-primary-container/20 flex justify-center items-center gap-2">
-                <span class="material-symbols-outlined">search</span>
+            <button onclick="executeMobileSearch()" class="relative w-full py-4 mt-1 bg-gradient-to-r from-primary-container to-primary text-black font-bold rounded-2xl hover:shadow-xl hover:shadow-primary-container/30 transition-all duration-300 flex justify-center items-center gap-2 text-base overflow-hidden">
+                <span class="material-symbols-outlined text-[22px]">search</span>
                 <span data-i18n="bottomNav.search">Cerca</span>
             </button>
         </div>

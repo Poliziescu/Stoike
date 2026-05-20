@@ -68,13 +68,13 @@
                     </div>
                 </div>
 
-                <button class="p-2 hover:bg-white/5 rounded-full transition-all" title="Notifiche">
+                <button onclick="openMobileSearchOverlay(event)" class="md:hidden p-2 hover:bg-white/5 rounded-full transition-all" title="Cerca">
+                    <span class="material-symbols-outlined text-primary-container">search</span>
+                </button>
+                <button onclick="window.location.href='/notifications.html'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Notifiche">
                     <span class="material-symbols-outlined text-primary-container" data-icon="notifications">notifications</span>
                 </button>
-                <button onclick="window.location.href='/reminders.html'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Avvisi di Uscita">
-                    <span class="material-symbols-outlined text-primary-container" data-icon="calendar_month">calendar_month</span>
-                </button>
-                <button class="p-2 hover:bg-white/5 rounded-full transition-all">
+                <button onclick="window.location.href='/list.html?type=watchlist'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Watchlist">
                     <span class="material-symbols-outlined text-primary-container" data-icon="bookmark">bookmark</span>
                 </button>
                 <div class="w-10 h-10 rounded-full overflow-hidden ml-2 border border-outline-variant/20">
@@ -170,15 +170,20 @@
             <span class="material-symbols-outlined">home</span>
             <span data-i18n="bottomNav.home">Home</span>
         </a>
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/list.html?type=top_rated">
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="#" onclick="openMobileSearchOverlay(event)">
             <span class="material-symbols-outlined">search</span>
             <span data-i18n="bottomNav.search">Cerca</span>
         </a>
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="#">
-            <span class="material-symbols-outlined">movie_filter</span>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200 relative" href="/notifications.html">
+            <span class="material-symbols-outlined">notifications</span>
+            <span data-i18n="nav.notifications">Notifiche</span>
+            <span id="bottom-notifications-badge" class="hidden absolute top-0.5 right-4 bg-red-500 text-white font-bold text-[9px] w-5 h-5 rounded-full flex items-center justify-center border border-background z-10">0</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/list.html?type=watchlist">
+            <span class="material-symbols-outlined">bookmark</span>
             <span data-i18n="bottomNav.watchlist">Watchlist</span>
         </a>
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="#">
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/account.html">
             <span class="material-symbols-outlined">person</span>
             <span data-i18n="bottomNav.profile">Profilo</span>
         </a>

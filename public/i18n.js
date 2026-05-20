@@ -129,6 +129,7 @@ const translations = {
     'list.newReleases':   { it: 'New Releases', en: 'New Releases', fr: 'Nouveautés', es: 'Nuevos Lanzamientos', de: 'Neuerscheinungen' },
     'list.comingSoon':    { it: 'Coming Soon', en: 'Coming Soon', fr: 'Prochainement', es: 'Próximamente', de: 'Demnächst' },
     'list.collection':    { it: 'Stoike Collection', en: 'Stoike Collection', fr: 'Collection Stoike', es: 'Colección Stoike', de: 'Stoike Sammlung' },
+    'list.watchlist':     { it: 'La mia Watchlist', en: 'My Watchlist', fr: 'Ma Watchlist', es: 'Mi Watchlist', de: 'Meine Watchlist' },
     'list.loading':       { it: 'Caricamento in corso...', en: 'Loading...', fr: 'Chargement...', es: 'Cargando...', de: 'Laden...' },
     'list.noMovies':      { it: 'Nessun film trovato per questa categoria o ricerca.', en: 'No movies found for this category or search.', fr: 'Aucun film trouvé pour cette catégorie ou recherche.', es: 'No se encontraron películas para esta categoría o búsqueda.', de: 'Keine Filme für diese Kategorie oder Suche gefunden.' },
     'list.error':         { it: 'Errore nel caricamento dei dati. Riprova più tardi.', en: 'Error loading data. Please try again later.', fr: 'Erreur de chargement. Réessayez plus tard.', es: 'Error al cargar los datos. Inténtalo más tarde.', de: 'Fehler beim Laden. Bitte später erneut versuchen.' },

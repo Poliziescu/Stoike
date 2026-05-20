@@ -71,7 +71,7 @@
                 <button onclick="openMobileSearchOverlay(event)" class="md:hidden p-2 hover:bg-white/5 rounded-full transition-all" title="Cerca">
                     <span class="material-symbols-outlined text-primary-container">search</span>
                 </button>
-                <button class="p-2 hover:bg-white/5 rounded-full transition-all" title="Notifiche">
+                <button onclick="window.location.href='/notifications.html'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Notifiche">
                     <span class="material-symbols-outlined text-primary-container" data-icon="notifications">notifications</span>
                 </button>
                 <button onclick="window.location.href='/list.html?type=watchlist'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Watchlist">
@@ -137,7 +137,7 @@
         </aside>
 
         <!-- Main Content Canvas -->
-        <main id="main-content" class="flex-1 p-margin-mobile md:p-margin-desktop overflow-y-auto">
+        <main id="main-content" class="flex-1 p-margin-mobile pb-24 md:p-margin-desktop md:pb-8 overflow-y-auto">
             <section class="mb-12">
                 <h1 id="list-title" class="font-display-md text-display-md text-white font-bold tracking-tight mb-8">Lista Film</h1>
                 <div id="movies-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-md md:gap-lg">
@@ -169,7 +169,7 @@
         <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200 relative" href="/notifications.html">
             <span class="material-symbols-outlined">notifications</span>
             <span data-i18n="nav.notifications">Notifiche</span>
-            <span id="bottom-notifications-badge" class="hidden absolute top-0.5 right-4 bg-red-500 text-white font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border border-background z-10">0</span>
+            <span id="bottom-notifications-badge" class="hidden absolute top-0.5 right-4 bg-red-500 text-white font-bold text-[9px] w-5 h-5 rounded-full flex items-center justify-center border border-background z-10">0</span>
         </a>
         <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/list.html?type=watchlist">
             <span class="material-symbols-outlined">bookmark</span>

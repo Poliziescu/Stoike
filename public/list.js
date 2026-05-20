@@ -20,6 +20,119 @@ document.addEventListener('DOMContentLoaded', async () => {
     const year = params.get('year');
     const type = params.get('type');
 
+    // ── WATCHLIST MODE ──
+    if (type === 'watchlist') {
+        if (titleEl) titleEl.innerText = i18n.t('list.watchlist') || 'La mia Watchlist';
+
+        const loadMoreBtn = document.getElementById('load-more-btn');
+        if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+
+        const user = localStorage.getItem('stoike_user');
+        if (!user) {
+            gridEl.innerHTML = `
+                <div class="col-span-full text-center py-20 text-on-surface-variant">
+                    <span class="material-symbols-outlined text-[56px] mb-4 block opacity-30">lock</span>
+                    <p class="text-lg font-medium mb-2">Accedi per vedere la tua Watchlist</p>
+                    <p class="text-sm opacity-70">Effettua il login per salvare film e ricevere promemoria sulle uscite.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Show loading skeleton
+        gridEl.innerHTML = `
+            <div class="col-span-full flex flex-col items-center justify-center py-16 gap-3">
+                <span class="material-symbols-outlined text-[40px] text-primary-container animate-spin">sync</span>
+                <span class="text-on-surface-variant text-sm">Caricamento watchlist...</span>
+            </div>
+        `;
+
+        try {
+            // Fetch saved movies from API
+            let savedMovies = [];
+            try {
+                const res = await fetch(`/api/reminders/${encodeURIComponent(user)}`);
+                if (res.ok) {
+                    savedMovies = await res.json();
+                }
+            } catch (fetchErr) {
+                console.warn('Fallback to localStorage for watchlist:', fetchErr);
+            }
+
+            // Fallback to localStorage if API returned nothing
+            if (!savedMovies || savedMovies.length === 0) {
+                const localRaw = localStorage.getItem('stoike_saved_movies_' + user);
+                if (localRaw) {
+                    try {
+                        const localParsed = JSON.parse(localRaw);
+                        savedMovies = localParsed.map(m => ({
+                            tmdb_movie_id: m.id || m.tmdb_movie_id,
+                            title: m.title,
+                            poster_url: m.poster_url
+                        }));
+                    } catch (e) {}
+                }
+            }
+
+            if (!savedMovies || savedMovies.length === 0) {
+                gridEl.innerHTML = `
+                    <div class="col-span-full text-center py-20 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-[56px] mb-4 block opacity-30">bookmark_border</span>
+                        <p class="text-lg font-medium mb-2">La tua Watchlist è vuota</p>
+                        <p class="text-sm opacity-70">Salva i film che ti interessano per ritrovarli qui e ricevere promemoria sulle uscite.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Fetch TMDb details for each movie concurrently
+            const movieIds = savedMovies.map(m => m.tmdb_movie_id).filter(Boolean);
+            const tmdbPromises = movieIds.map(id =>
+                fetchTMDB(`/movie/${id}`).catch(() => null)
+            );
+            const tmdbResults = await Promise.all(tmdbPromises);
+
+            const movies = tmdbResults
+                .filter(data => data && data.id)
+                .map(data => {
+                    // /movie/{id} returns `genres` array of {id, name} instead of genre_ids
+                    const genreText = data.genres
+                        ? data.genres.map(g => g.name).join(', ')
+                        : (data.genre_ids ? data.genre_ids.map(id => tmdbGenres[id] || '').filter(Boolean).join(', ') : '');
+                    return {
+                        id: data.id,
+                        title: data.title,
+                        genre: genreText,
+                        rating: data.vote_average ? data.vote_average.toFixed(1) : 'N/A',
+                        release_year: data.release_date ? data.release_date.substring(0, 4) : 'N/A',
+                        poster_url: data.poster_path
+                            ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
+                            : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover',
+                        backdrop_url: data.backdrop_path
+                            ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}`
+                            : '',
+                        synopsis: data.overview || ''
+                    };
+                });
+
+            if (movies.length > 0) {
+                gridEl.innerHTML = movies.map(movie => renderMovieCard(movie)).join('');
+            } else {
+                gridEl.innerHTML = `
+                    <div class="col-span-full text-center py-20 text-on-surface-variant">
+                        <span class="material-symbols-outlined text-[56px] mb-4 block opacity-30">error_outline</span>
+                        <p class="text-lg font-medium">Impossibile caricare i dettagli dei film salvati</p>
+                    </div>
+                `;
+            }
+        } catch (e) {
+            console.error('Error loading watchlist:', e);
+            gridEl.innerHTML = `<div class="col-span-full text-center text-red-400 py-12">${i18n.t('list.error')}</div>`;
+        }
+        return;
+    }
+
+    // ── STANDARD TMDB LIST MODE ──
     let endpoint = '/trending/movie/week';
     let pageTitle = i18n.t('list.catalog');
 
