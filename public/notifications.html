@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8" />
     <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-    <title>Stoike - Promemoria Uscita</title>
+    <title>Stoike - Centro Notifiche</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -27,7 +27,6 @@
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/index.html" data-i18n="nav.movies">Movies</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/genres.html" data-i18n="nav.genres">Genres</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/actors.html" data-i18n="nav.actors">Actors</a>
-                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="#" data-i18n="nav.community">Community</a>
             </div>
             <div class="flex items-center gap-sm">
                 <div class="hidden md:flex items-center gap-2" id="search-container">
@@ -72,19 +71,17 @@
                 </div>
                 
                 <!-- Navbar Actions -->
-                <button class="p-2 hover:bg-white/5 rounded-full transition-all" title="Notifiche">
+                <button onclick="window.location.href='/notifications.html'" class="p-2 hover:bg-white/5 rounded-full transition-all bg-white/10 relative" title="Notifiche">
                     <span class="material-symbols-outlined text-primary-container" data-icon="notifications">notifications</span>
+                    <span id="nav-notifications-badge" class="hidden absolute top-1 right-1 bg-red-500 text-white font-bold text-[10px] w-4.5 h-4.5 rounded-full flex items-center justify-center border border-background">0</span>
                 </button>
-                <button onclick="window.location.href='/reminders.html'" class="p-2 hover:bg-white/5 rounded-full transition-all bg-white/10" title="Avvisi di Uscita">
-                    <span class="material-symbols-outlined text-primary-container" data-icon="calendar_month">calendar_month</span>
-                </button>
-                <button class="p-2 hover:bg-white/5 rounded-full transition-all">
+                <button onclick="window.location.href='/list.html?type=watchlist'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Watchlist">
                     <span class="material-symbols-outlined text-primary-container" data-icon="bookmark">bookmark</span>
                 </button>
                 
                 <!-- Avatar -->
-                <div class="w-10 h-10 rounded-full overflow-hidden ml-2 border border-outline-variant/20">
-                    <img alt="User profile avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3" />
+                <div class="w-10 h-10 rounded-full overflow-hidden ml-2 border border-outline-variant/20 cursor-pointer" onclick="window.location.href='/account.html'">
+                    <img id="nav-avatar" alt="User profile avatar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3" />
                 </div>
             </div>
         </div>
@@ -95,7 +92,7 @@
     <div id="sidebar-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-md z-[90] hidden opacity-0 transition-all duration-300"></div>
 
     <!-- Main Content Layout -->
-    <div class="flex pt-20 h-screen">
+    <div class="flex pt-20 h-screen overflow-hidden">
         <!-- SideNavBar Drawer -->
         <aside id="sidebar" class="flex flex-col fixed left-0 top-0 bottom-0 z-[100] w-64 border-r border-outline-variant/10 bg-background/95 backdrop-blur-xl text-primary-container font-body-md text-body-md -translate-x-full transition-transform duration-300 ease-in-out shadow-2xl py-6">
             <div class="px-md mb-lg flex justify-between items-center">
@@ -144,25 +141,62 @@
 
         <!-- Main Content Canvas -->
         <main id="main-content" class="flex-1 p-margin-mobile md:p-margin-desktop overflow-y-auto">
-        <div class="mb-6">
-            <h1 class="font-display-lg-mobile md:font-display-lg text-white mb-2 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[36px] text-primary-container">calendar_month</span>
-                <span>Promemoria Uscita</span>
-            </h1>
-            <p class="text-on-surface-variant font-body-md">Ricevi avvisi e visualizza quanti giorni mancano alla data di uscita dei tuoi film più attesi.</p>
-        </div>
+            <div class="max-w-7xl mx-auto">
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
+                    <div>
+                        <h1 class="font-display-lg-mobile md:font-display-lg text-white mb-2 flex items-center gap-3">
+                            <span class="material-symbols-outlined text-[36px] text-primary-container animate-pulse">notifications</span>
+                            <span data-i18n="notifications.title">Centro Notifiche</span>
+                        </h1>
+                        <p class="text-on-surface-variant font-body-md" data-i18n="notifications.subtitle">Rimani aggiornato sulle uscite dei film e sulle interazioni della community nel forum.</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="clear-all-btn" onclick="clearAllNotifications()" class="px-5 py-2.5 bg-white/5 border border-outline-variant/30 text-primary-container hover:bg-white/10 rounded-full font-label-md transition-colors flex items-center gap-2">
+                            <span class="material-symbols-outlined text-[18px]">done_all</span>
+                            <span data-i18n="notifications.clearAll">Segna tutte come lette</span>
+                        </button>
+                    </div>
+                </div>
 
-        <div id="not-logged-in-msg" class="hidden py-12 text-center text-on-surface-variant bg-surface-container/30 border border-outline-variant/10 rounded-2xl">
-            <span class="material-symbols-outlined text-[48px] mb-4 opacity-50">lock</span>
-            <p class="font-headline-sm">Devi accedere per vedere i tuoi film salvati.</p>
-            <button onclick="openAuthModal()" class="mt-4 px-6 py-2 bg-primary-container text-black font-label-md rounded hover:bg-primary transition-colors inline-flex items-center gap-2">
-                Accedi Ora
-            </button>
-        </div>
+                <div id="not-logged-in-msg" class="hidden py-16 text-center text-on-surface-variant bg-surface-container/20 border border-outline-variant/15 rounded-3xl backdrop-blur-md">
+                    <span class="material-symbols-outlined text-[64px] mb-4 opacity-40 text-primary-container">lock</span>
+                    <p class="font-headline-sm text-white mb-4">Accedi per consultare le tue notifiche e promemoria.</p>
+                    <button onclick="openAuthModal()" class="px-8 py-3 bg-primary-container text-black font-label-md rounded-full hover:bg-primary transition-all duration-300 shadow-lg shadow-primary-container/25">
+                        Accedi Ora
+                    </button>
+                </div>
 
-        <div id="saved-movies-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-gutter">
-            <!-- Saved movies populated here -->
-    </main>
+                <div id="notifications-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                    <!-- Column 1: Release Reminders -->
+                    <section class="bg-surface-container/10 border border-outline-variant/10 rounded-2xl p-6 backdrop-blur-md flex flex-col gap-6">
+                        <h2 class="font-headline-sm text-primary-container flex items-center gap-2 pb-4 border-b border-outline-variant/10">
+                            <span class="material-symbols-outlined">calendar_month</span>
+                            <span data-i18n="notifications.remindersSection">Promemoria Uscite</span>
+                            <span id="reminders-count-badge" class="hidden ml-auto px-2 py-0.5 bg-primary-container text-black text-xs font-bold rounded-full">0</span>
+                        </h2>
+                        
+                        <div id="reminders-list" class="flex flex-col gap-4 max-h-[600px] overflow-y-auto pr-1">
+                            <!-- Reminders items populated here -->
+                            <div class="py-12 text-center text-on-surface-variant">Caricamento promemoria...</div>
+                        </div>
+                    </section>
+
+                    <!-- Column 2: Forum Mentions / Live Notifications -->
+                    <section class="bg-surface-container/10 border border-outline-variant/10 rounded-2xl p-6 backdrop-blur-md flex flex-col gap-6">
+                        <h2 class="font-headline-sm text-primary-container flex items-center gap-2 pb-4 border-b border-outline-variant/10">
+                            <span class="material-symbols-outlined">forum</span>
+                            <span data-i18n="notifications.mentionsSection">Menzioni nel Forum</span>
+                            <span id="mentions-count-badge" class="hidden ml-auto px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">0</span>
+                        </h2>
+
+                        <div id="mentions-list" class="flex flex-col gap-4 max-h-[600px] overflow-y-auto pr-1">
+                            <!-- Mentions items populated here -->
+                            <div class="py-12 text-center text-on-surface-variant">Caricamento menzioni...</div>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </main>
     </div>
 
     <!-- Auth Modal -->
@@ -196,30 +230,59 @@
         </div>
     </div>
 
+    <!-- Bottom Navigation Bar (Mobile only) -->
+    <div class="md:hidden fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-xl border-t border-outline-variant/10 z-50 h-16 flex items-center justify-around px-2">
+        <a href="/index.html" class="flex flex-col items-center justify-center flex-1 py-2 text-on-surface-variant hover:text-primary transition-all">
+            <span class="material-symbols-outlined">home</span>
+            <span class="text-[10px] mt-0.5" data-i18n="bottomNav.home">Home</span>
+        </a>
+        <a href="#" onclick="openMobileSearchOverlay(event)" class="flex flex-col items-center justify-center flex-1 py-2 text-on-surface-variant hover:text-primary transition-all">
+            <span class="material-symbols-outlined">search</span>
+            <span class="text-[10px] mt-0.5" data-i18n="bottomNav.search">Cerca</span>
+        </a>
+        <a href="/notifications.html" class="flex flex-col items-center justify-center flex-1 py-2 text-primary transition-all relative">
+            <span class="material-symbols-outlined">notifications</span>
+            <span class="text-[10px] mt-0.5" data-i18n="nav.notifications">Notifiche</span>
+            <span id="bottom-notifications-badge" class="hidden absolute top-1 right-5 bg-red-500 text-white font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border border-background">0</span>
+        </a>
+        <a href="/list.html?type=watchlist" class="flex flex-col items-center justify-center flex-1 py-2 text-on-surface-variant hover:text-primary transition-all">
+            <span class="material-symbols-outlined">bookmark</span>
+            <span class="text-[10px] mt-0.5" data-i18n="bottomNav.watchlist">Watchlist</span>
+        </a>
+        <a href="/account.html" class="flex flex-col items-center justify-center flex-1 py-2 text-on-surface-variant hover:text-primary transition-all">
+            <span class="material-symbols-outlined">person</span>
+            <span class="text-[10px] mt-0.5" data-i18n="bottomNav.profile">Profilo</span>
+        </a>
+    </div>
+
     <script src="i18n.js"></script>
     <script src="common.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const user = localStorage.getItem('stoike_user');
-            const container = document.getElementById('saved-movies-container');
+            const grid = document.getElementById('notifications-grid');
             const notLoggedMsg = document.getElementById('not-logged-in-msg');
+            const clearAllBtn = document.getElementById('clear-all-btn');
 
             if (!user) {
                 notLoggedMsg.classList.remove('hidden');
-                container.classList.add('hidden');
+                grid.classList.add('hidden');
+                clearAllBtn.classList.add('hidden');
                 return;
             }
 
-            loadSavedMovies();
+            loadReleaseReminders();
+            loadForumMentions();
         });
 
-        async function loadSavedMovies() {
+        // ── 1. release reminders loading ──
+        async function loadReleaseReminders() {
             const user = localStorage.getItem('stoike_user');
-            const container = document.getElementById('saved-movies-container');
+            const container = document.getElementById('reminders-list');
+            const countBadge = document.getElementById('reminders-count-badge');
             
             let saved = [];
             try {
-                // Tenta di caricare dal database backend
                 const resp = await fetch('/api/reminders/' + encodeURIComponent(user));
                 if (resp.ok) {
                     saved = await resp.json();
@@ -228,47 +291,56 @@
                 }
             } catch(e) {
                 console.warn("Impossibile caricare dal database. Caricamento in fallback da localStorage:", e);
-                // Fallback a localStorage
                 const savedRaw = localStorage.getItem('stoike_saved_movies_' + user);
                 if (savedRaw) {
-                    try {
-                        saved = JSON.parse(savedRaw);
-                    } catch(err){}
+                    try { saved = JSON.parse(savedRaw); } catch(err){}
                 }
             }
 
             if (saved.length === 0) {
-                container.innerHTML = '<div class="col-span-full py-12 text-center text-on-surface-variant">Nessun film salvato al momento. Clicca sull\'icona del calendario in un film per salvarlo!</div>';
+                container.innerHTML = `
+                    <div class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-3">
+                        <span class="material-symbols-outlined text-[36px] opacity-40">calendar_today</span>
+                        <div>Nessun promemoria attivo. Aggiungi i film dal catalogo!</div>
+                    </div>`;
+                countBadge.classList.add('hidden');
                 return;
             }
 
+            countBadge.innerText = saved.length;
+            countBadge.classList.remove('hidden');
             container.innerHTML = '';
+
             for (const movie of saved) {
                 const id = movie.tmdb_movie_id || movie.id;
                 const title = movie.title || movie.movie_title;
-                const posterUrl = movie.poster_url;
+                const posterUrl = movie.poster_url || 'https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover';
                 
                 const card = document.createElement('div');
-                card.className = "flex gap-4 bg-surface-container/30 border border-outline-variant/10 rounded-xl overflow-hidden p-4 relative hover:border-primary-container/30 transition-colors";
-                
-                let releaseDateMsg = 'Caricamento...';
+                card.id = `reminder-card-${id}`;
+                card.className = "flex gap-4 bg-surface-container-high/40 hover:bg-surface-container-high/60 border border-outline-variant/10 rounded-xl overflow-hidden p-3 relative hover:border-primary-container/30 transition-all duration-300 group";
                 
                 card.innerHTML = `
-                    <img src="${posterUrl}" class="w-24 h-36 object-cover rounded shadow cursor-pointer" onclick="window.location.href='/movie.html?id=${id}'" onerror="this.src='https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover'" />
+                    <img src="${posterUrl}" class="w-16 h-24 object-cover rounded shadow cursor-pointer group-hover:scale-105 transition-transform duration-300" onclick="window.location.href='/movie.html?id=${id}'" onerror="this.src='https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover'" />
                     <div class="flex-1 flex flex-col min-w-0">
-                        <h3 class="font-title-md text-white font-bold truncate cursor-pointer hover:text-primary-container" onclick="window.location.href='/movie.html?id=${id}'">${title}</h3>
-                        <p class="text-on-surface-variant font-label-sm mt-1" id="release-info-${id}">${releaseDateMsg}</p>
+                        <h3 class="font-title-sm text-white font-bold truncate cursor-pointer hover:text-primary-container transition-colors" onclick="window.location.href='/movie.html?id=${id}'">${title}</h3>
+                        <p class="text-on-surface-variant font-label-sm mt-1" id="release-info-${id}">Calcolo giorni...</p>
                         
-                        <div class="mt-auto pt-4 flex justify-between items-center">
-                            <button class="text-red-400 hover:text-red-300 font-label-sm flex items-center gap-1 transition-colors" onclick="removeSavedMovie(${id}, this)">
-                                <span class="material-symbols-outlined text-[16px]">delete</span> Rimuovi
+                        <div class="mt-auto flex justify-between items-center pt-2">
+                            <button class="text-red-400 hover:text-red-300 font-label-xs flex items-center gap-1 transition-colors" onclick="removeSavedMovie(${id}, this)">
+                                <span class="material-symbols-outlined text-[14px]">delete</span>
+                                <span data-i18n="notifications.deleteReminder">Rimuovi</span>
+                            </button>
+                            <button class="text-primary-container hover:underline font-label-xs flex items-center gap-0.5 transition-all" onclick="window.location.href='/movie.html?id=${id}'">
+                                <span data-i18n="notifications.watchlist">Vedi dettagli</span>
+                                <span class="material-symbols-outlined text-[14px]">chevron_right</span>
                             </button>
                         </div>
                     </div>
                 `;
                 container.appendChild(card);
                 
-                // Richiesta asincrona info di uscita
+                // Fetch details
                 fetchReleaseInfo(id).then(info => {
                     const infoEl = document.getElementById('release-info-' + id);
                     if (infoEl) infoEl.innerHTML = info;
@@ -281,7 +353,7 @@
                 const res = await fetchTMDB('/movie/' + id + '/release_dates');
                 if (!res || !res.results) return 'Data di uscita sconosciuta';
                 
-                const lang = (window.i18n && window.i18n.getCurrentLang) ? window.i18n.getCurrentLang() : 'it';
+                const lang = window.i18n ? window.i18n.getCurrentLang() : 'it';
                 const flagMap = { 'it': 'IT', 'en': 'US', 'fr': 'FR', 'es': 'ES', 'de': 'DE' };
                 const isoRegion = flagMap[lang] || 'US';
                 
@@ -307,21 +379,26 @@
                 if (dateStr) {
                     const releaseDate = new Date(dateStr);
                     const now = new Date();
-                    const diffTime = releaseDate - now;
+                    // Reset times to compare dates accurately
+                    now.setHours(0,0,0,0);
+                    const releaseDateDay = new Date(releaseDate);
+                    releaseDateDay.setHours(0,0,0,0);
+
+                    const diffTime = releaseDateDay - now;
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     
                     if (diffDays > 0) {
-                        return '<span class="text-yellow-400 font-bold">Mancano ' + diffDays + ' giorni</span> all\'uscita (' + releaseDate.toLocaleDateString() + ')';
+                        return `<span class="text-yellow-400 font-bold">${diffDays} ` + window.i18n.t('notifications.daysToGo') + `</span> (${releaseDate.toLocaleDateString()})`;
                     } else if (diffDays === 0) {
-                        return '<span class="text-green-400 font-bold">Esce OGGI!</span>';
+                        return `<span class="text-green-400 font-bold animate-pulse">` + window.i18n.t('notifications.releasedToday') + `</span>`;
                     } else {
-                        return '<span class="text-gray-400">Già uscito il ' + releaseDate.toLocaleDateString() + '</span>';
+                        return `<span class="text-on-surface-variant/60">` + window.i18n.t('notifications.released') + ` (${releaseDate.toLocaleDateString()})</span>`;
                     }
                 }
                 
                 return 'Data di uscita sconosciuta';
             } catch (e) {
-                return 'Errore nel caricamento dati';
+                return 'Errore caricamento dati';
             }
         }
 
@@ -330,36 +407,161 @@
             if (!user) return;
             
             try {
-                // Cancella dal database tramite backend
                 const resp = await fetch(`/api/reminders/${encodeURIComponent(user)}/${id}`, {
                     method: 'DELETE'
                 });
-                if (!resp.ok) {
-                    console.error("Errore rimozione dal database");
-                }
+                if (!resp.ok) console.error("Errore rimozione dal database");
             } catch(e) {
                 console.error("Errore richiesta di rimozione:", e);
             }
             
-            // Sync/Rimuovi anche da localStorage in fallback
             const key = 'stoike_saved_movies_' + user;
             let saved = [];
             const savedRaw = localStorage.getItem(key);
             if (savedRaw) {
                 try { saved = JSON.parse(savedRaw); } catch(e){}
             }
-            
             saved = saved.filter(m => (m.id != id && m.tmdb_movie_id != id));
             localStorage.setItem(key, JSON.stringify(saved));
             
-            const card = btnEl.closest('.flex.gap-4');
+            const card = document.getElementById(`reminder-card-${id}`);
             if (card) {
-                card.remove();
-                showStoikeToast("Promemoria rimosso con successo.", "info");
-                if (document.getElementById('saved-movies-container').children.length === 0) {
-                    loadSavedMovies();
-                }
+                card.classList.add('scale-95', 'opacity-0');
+                setTimeout(() => {
+                    card.remove();
+                    showStoikeToast("Promemoria rimosso con successo.", "info");
+                    loadReleaseReminders();
+                }, 300);
             }
+        };
+
+        // ── 2. Forum Mentions loading ──
+        async function loadForumMentions() {
+            const user = localStorage.getItem('stoike_user');
+            const container = document.getElementById('mentions-list');
+            const countBadge = document.getElementById('mentions-count-badge');
+            
+            try {
+                const resp = await fetch(`/api/notifications/${encodeURIComponent(user)}`);
+                if (!resp.ok) throw new Error("Errore risposta API notifiche");
+                
+                const allNotifs = await resp.json();
+                
+                // Stabiliamo quali notifiche sono già state marcate come lette dal client
+                const readKey = `stoike_read_notifications_${user}`;
+                let readIds = [];
+                try {
+                    readIds = JSON.parse(localStorage.getItem(readKey)) || [];
+                } catch(e){}
+                
+                // Filtra le notifiche per tipo 'mention' o 'reminder' (già usciti)
+                // Escludiamo quelle cancellate se necessario, o mostriamo solo quelle non ancora lette come attive, e le lette in opaco
+                if (allNotifs.length === 0) {
+                    container.innerHTML = `
+                        <div class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-3">
+                            <span class="material-symbols-outlined text-[36px] opacity-40">notifications_off</span>
+                            <div data-i18n="notifications.noNotifications">Nessuna nuova notifica.</div>
+                        </div>`;
+                    countBadge.classList.add('hidden');
+                    return;
+                }
+
+                // Calcoliamo quante sono non lette
+                const unreadNotifs = allNotifs.filter(n => !readIds.includes(n.id));
+                if (unreadNotifs.length > 0) {
+                    countBadge.innerText = unreadNotifs.length;
+                    countBadge.classList.remove('hidden');
+                } else {
+                    countBadge.classList.add('hidden');
+                }
+
+                container.innerHTML = '';
+                allNotifs.forEach(notif => {
+                    const isRead = readIds.includes(notif.id);
+                    const notifCard = document.createElement('div');
+                    notifCard.id = `notif-card-${notif.id}`;
+                    notifCard.className = `p-4 border rounded-xl relative flex gap-3 transition-all duration-300 group cursor-pointer ${isRead ? 'bg-surface-container-low/20 border-outline-variant/5 opacity-60' : 'bg-surface-container-high/50 border-outline-variant/15 hover:border-primary-container/40'}`;
+                    
+                    const dateFormatted = new Date(notif.created_at).toLocaleString();
+                    const icon = notif.type === 'mention' ? 'forum' : 'celebration';
+                    const iconColor = notif.type === 'mention' ? 'text-primary-container' : 'text-green-400';
+                    
+                    notifCard.onclick = () => {
+                        markNotificationAsRead(notif.id);
+                        window.location.href = `/movie.html?id=${notif.movie_id}`;
+                    };
+
+                    notifCard.innerHTML = `
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-white/5 flex items-center justify-center ${iconColor}">
+                            <span class="material-symbols-outlined">${icon}</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between gap-2 mb-1">
+                                <span class="font-bold text-white text-sm group-hover:text-primary-container transition-colors">${notif.title}</span>
+                                <span class="text-[10px] text-on-surface-variant">${dateFormatted}</span>
+                            </div>
+                            <p class="text-sm text-on-surface-variant truncate">${notif.content}</p>
+                        </div>
+                        ${!isRead ? `<span class="absolute top-2 right-2 w-2 h-2 rounded-full bg-red-500" id="unread-dot-${notif.id}"></span>` : ''}
+                    `;
+                    
+                    container.appendChild(notifCard);
+                });
+
+                // Update standard badges count on common header
+                if (window.updateNotificationsCount) {
+                    window.updateNotificationsCount();
+                }
+
+            } catch (err) {
+                console.error("Errore nel caricamento delle notifiche:", err);
+                container.innerHTML = `<div class="py-12 text-center text-red-400 font-label-md">Impossibile connettersi al server per le notifiche.</div>`;
+            }
+        }
+
+        window.markNotificationAsRead = function(id) {
+            const user = localStorage.getItem('stoike_user');
+            if (!user) return;
+            const readKey = `stoike_read_notifications_${user}`;
+            
+            let readIds = [];
+            try {
+                readIds = JSON.parse(localStorage.getItem(readKey)) || [];
+            } catch(e){}
+            
+            if (!readIds.includes(id)) {
+                readIds.push(id);
+                localStorage.setItem(readKey, JSON.stringify(readIds));
+            }
+            
+            // Applica stili lette
+            const card = document.getElementById(`notif-card-${id}`);
+            if (card) {
+                card.classList.remove('bg-surface-container-high/50', 'border-outline-variant/15');
+                card.classList.add('bg-surface-container-low/20', 'border-outline-variant/5', 'opacity-60');
+            }
+            const dot = document.getElementById(`unread-dot-${id}`);
+            if (dot) dot.remove();
+
+            // Ricarica la lista per aggiornare i conteggi
+            loadForumMentions();
+        };
+
+        window.clearAllNotifications = function() {
+            const user = localStorage.getItem('stoike_user');
+            if (!user) return;
+            
+            // Chiamiamo per caricare tutte e segnarle lette
+            fetch(`/api/notifications/${encodeURIComponent(user)}`)
+                .then(r => r.json())
+                .then(allNotifs => {
+                    const readKey = `stoike_read_notifications_${user}`;
+                    const ids = allNotifs.map(n => n.id);
+                    localStorage.setItem(readKey, JSON.stringify(ids));
+                    showStoikeToast("Tutte le notifiche sono state segnate come lette.", "success");
+                    loadForumMentions();
+                })
+                .catch(e => console.error(e));
         };
     </script>
 </body>

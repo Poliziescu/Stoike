@@ -133,9 +133,23 @@ const translations = {
     'list.noMovies':      { it: 'Nessun film trovato per questa categoria o ricerca.', en: 'No movies found for this category or search.', fr: 'Aucun film trouvé pour cette catégorie ou recherche.', es: 'No se encontraron películas para esta categoría o búsqueda.', de: 'Keine Filme für diese Kategorie oder Suche gefunden.' },
     'list.error':         { it: 'Errore nel caricamento dei dati. Riprova più tardi.', en: 'Error loading data. Please try again later.', fr: 'Erreur de chargement. Réessayez plus tard.', es: 'Error al cargar los datos. Inténtalo más tarde.', de: 'Fehler beim Laden. Bitte später erneut versuchen.' },
 
+    // ── Unified Notifications Center ──
+    'nav.notifications':                  { it: 'Notifiche', en: 'Notifications', fr: 'Notifications', es: 'Notificaciones', de: 'Benachrichtigungen' },
+    'notifications.title':                { it: 'Centro Notifiche', en: 'Notification Center', fr: 'Centre de Notifications', es: 'Centro de Notificaciones', de: 'Benachrichtigungszentrum' },
+    'notifications.remindersSection':     { it: 'Promemoria Uscite', en: 'Release Reminders', fr: 'Rappels de Sortie', es: 'Recordatorios de Estreno', de: 'Veröffentlichungs-Erinnerungen' },
+    'notifications.mentionsSection':      { it: 'Menzioni nel Forum', en: 'Forum Mentions', fr: 'Mentions dans le Forum', es: 'Menciones en el Foro', de: 'Erwähnungen im Forum' },
+    'notifications.noNotifications':      { it: 'Nessuna nuova notifica.', en: 'No new notifications.', fr: 'Aucune nouvelle notification.', es: 'No hay nuevas notificaciones.', de: 'Keine neuen Benachrichtigungen.' },
+    'notifications.clearAll':             { it: 'Segna tutte come lette', en: 'Mark all as read', fr: 'Tout marquer comme lu', es: 'Marcar todas como leídas', de: 'Alle als gelesen markieren' },
+    'notifications.daysToGo':             { it: 'giorni all\'uscita', en: 'days to release', fr: 'jours avant la sortie', es: 'días para el estreno', de: 'Tage bis zur Veröffentlichung' },
+    'notifications.releasedToday':        { it: 'Uscito oggi!', en: 'Released today!', fr: 'Sorti aujourd\'hui !', es: '¡Estrenado hoy!', de: 'Heute veröffentlicht!' },
+    'notifications.released':             { it: 'Già uscito', en: 'Already released', fr: 'Déjà sorti', es: 'Ya estrenado', de: 'Bereits veröffentlicht' },
+    'notifications.deleteReminder':       { it: 'Rimuovi promemoria', en: 'Remove reminder', fr: 'Supprimer le rappel', es: 'Eliminar recordatorio', de: 'Erinnerung entfernen' },
+    'notifications.watchlist':            { it: 'Vedi nella Watchlist', en: 'View in Watchlist', fr: 'Voir dans la liste', es: 'Ver en la Lista', de: 'In Merkliste ansehen' },
+
     // ── Common / Misc ──
     'common.all':          { it: 'Tutti', en: 'All', fr: 'Tous', es: 'Todos', de: 'Alle' },
     'common.loading':      { it: 'Caricamento...', en: 'Loading...', fr: 'Chargement...', es: 'Cargando...', de: 'Laden...' },
+    'common.loadMore':     { it: 'Carica altro', en: 'Load More', fr: 'Charger plus', es: 'Cargar más', de: 'Mehr laden' },
 };
 
 // ── TMDb language mapping ──

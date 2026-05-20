@@ -732,6 +732,121 @@ app.delete('/api/forum/:post_id', async (req, res) => {
 
 
 // =========================================
+// NOTIFICATIONS API (Supabase integration)
+// =========================================
+
+// Recupera le notifiche per un determinato utente (promemoria usciti e menzioni nel forum)
+app.get('/api/notifications/:username', async (req, res) => {
+    const username = req.params.username;
+    console.log(`🔔 [Notifications Get] Recupero notifiche per: ${username}`);
+
+    try {
+        let notifications = [];
+
+        // 1. Recupera il profilo dell'utente per conoscere il nickname personalizzato
+        let nickname = '';
+        try {
+            const profileResponse = await axios.get(`${SUPABASE_URL}/rest/v1/users`, {
+                params: {
+                    username: `eq.${username}`,
+                    select: 'nickname'
+                },
+                headers: supabaseHeaders(),
+                timeout: 5000
+            });
+            if (profileResponse.data && profileResponse.data.length > 0) {
+                nickname = profileResponse.data[0].nickname || '';
+            }
+        } catch (profileErr) {
+            console.warn(`⚠️ [Notifications Get] Impossibile recuperare il profilo per il nickname: ${profileErr.message}`);
+        }
+
+        // 2. Recupera i post del forum per trovare menzioni (@username o @nickname)
+        try {
+            const forumResponse = await axios.get(`${SUPABASE_URL}/rest/v1/forum_posts`, {
+                params: {
+                    select: '*'
+                },
+                headers: supabaseHeaders(),
+                timeout: 10000
+            });
+
+            if (forumResponse.data && Array.isArray(forumResponse.data)) {
+                const userTag = `@${username.toLowerCase()}`;
+                const nickTag = nickname ? `@${nickname.toLowerCase().replace(/\s+/g, '')}` : null;
+
+                forumResponse.data.forEach(post => {
+                    if (post.username && post.username.toLowerCase() === username.toLowerCase()) return; // Non autotaggarsi
+                    
+                    if (post.content) {
+                        const contentLower = post.content.toLowerCase();
+                        const hasUserTag = contentLower.includes(userTag);
+                        const hasNickTag = nickTag ? contentLower.includes(nickTag) : false;
+
+                        if (hasUserTag || hasNickTag) {
+                            notifications.push({
+                                id: `mention_${post.id}`,
+                                type: 'mention',
+                                title: 'Menzione nel Forum',
+                                content: `${post.username} ti ha menzionato: "${post.content.slice(0, 60)}${post.content.length > 60 ? '...' : ''}"`,
+                                movie_id: post.tmdb_movie_id,
+                                created_at: post.created_at
+                            });
+                        }
+                    }
+                });
+            }
+        } catch (forumErr) {
+            console.error(`❌ [Notifications Get] Errore recupero post forum:`, forumErr.message);
+        }
+
+        // 3. Recupera i promemoria di uscita salvati per determinare se sono già usciti
+        try {
+            const remindersResponse = await axios.get(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+                params: {
+                    username: `eq.${username}`,
+                    select: '*'
+                },
+                headers: supabaseHeaders(),
+                timeout: 10000
+            });
+
+            if (remindersResponse.data && Array.isArray(remindersResponse.data)) {
+                remindersResponse.data.forEach(reminder => {
+                    const releaseDateStr = reminder.release_date;
+                    if (releaseDateStr) {
+                        const releaseDate = new Date(releaseDateStr);
+                        const now = new Date();
+                        // Se la data di uscita è trascorsa o è oggi
+                        if (releaseDate <= now) {
+                            notifications.push({
+                                id: `reminder_${reminder.tmdb_movie_id || reminder.id}`,
+                                type: 'reminder',
+                                title: 'Film Uscito!',
+                                content: `Il film "${reminder.movie_title || reminder.title}" è uscito al cinema! (${releaseDate.toLocaleDateString()})`,
+                                movie_id: reminder.tmdb_movie_id || reminder.id,
+                                created_at: releaseDateStr
+                            });
+                        }
+                    }
+                });
+            }
+        } catch (remindersErr) {
+            console.error(`❌ [Notifications Get] Errore recupero promemoria:`, remindersErr.message);
+        }
+
+        // Ordina le notifiche per data decrescente
+        notifications.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+        return res.json(notifications);
+    } catch (error) {
+        console.error(`❌ [Notifications Get] ERRORE GENERALE:`, error.message);
+        return res.status(500).json({ error: error.message });
+    }
+});
+
+
+// =========================================
 // MOVIE REMINDERS API (Supabase integration)
 // =========================================
 

@@ -8,6 +8,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet" />
     <script src="tailwind.config.js"></script>
+    <link rel="icon" type="image/png" href="favicon.png" />
     <link href="style.css" rel="stylesheet" />
 </head>
 <body class="bg-background text-on-background min-h-screen pb-20 md:pb-0">
@@ -18,15 +19,14 @@
                 <button id="menu-toggle" class="p-2 hover:bg-white/5 rounded-full transition-all text-primary-container flex items-center justify-center">
                     <span class="material-symbols-outlined text-[28px]">menu</span>
                 </button>
-                <div id="site-logo" class="font-display-lg-mobile text-display-lg-mobile text-primary-container tracking-tight cursor-pointer hover:opacity-80 transition-opacity" onclick="window.location.href='/index.html'">
-                    Stoike
+                <div id="site-logo" class="cursor-pointer hover:opacity-80 transition-opacity flex items-center" onclick="window.location.href='/index.html'">
+                    <img src="logo.png" alt="Stoike Logo" class="h-10 md:h-12 w-auto object-contain" />
                 </div>
             </div>
             <div class="hidden md:flex items-center gap-md">
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/index.html" data-i18n="nav.movies">Movies</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/genres.html" data-i18n="nav.genres">Genres</a>
                 <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="/actors.html" data-i18n="nav.actors">Actors</a>
-                <a class="text-on-surface-variant hover:text-primary transition-colors hover:bg-white/5 transition-all duration-300 font-headline-sm text-headline-sm" href="#" data-i18n="nav.community">Community</a>
             </div>
             <div class="flex items-center gap-sm">
                 <div class="hidden md:flex items-center gap-2" id="search-container">
@@ -68,13 +68,13 @@
                     </div>
                 </div>
 
+                <button onclick="openMobileSearchOverlay(event)" class="md:hidden p-2 hover:bg-white/5 rounded-full transition-all" title="Cerca">
+                    <span class="material-symbols-outlined text-primary-container">search</span>
+                </button>
                 <button class="p-2 hover:bg-white/5 rounded-full transition-all" title="Notifiche">
                     <span class="material-symbols-outlined text-primary-container" data-icon="notifications">notifications</span>
                 </button>
-                <button onclick="window.location.href='/reminders.html'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Avvisi di Uscita">
-                    <span class="material-symbols-outlined text-primary-container" data-icon="calendar_month">calendar_month</span>
-                </button>
-                <button class="p-2 hover:bg-white/5 rounded-full transition-all">
+                <button onclick="window.location.href='/list.html?type=watchlist'" class="p-2 hover:bg-white/5 rounded-full transition-all" title="Watchlist">
                     <span class="material-symbols-outlined text-primary-container" data-icon="bookmark">bookmark</span>
                 </button>
                 <div class="w-10 h-10 rounded-full overflow-hidden ml-2 border border-outline-variant/20">
@@ -143,25 +143,39 @@
                 <div id="movies-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-md md:gap-lg">
                     <div class="col-span-full text-center text-on-surface-variant py-12">Caricamento in corso...</div>
                 </div>
+
+                <!-- Load More Button -->
+                <div class="flex justify-center mt-12 mb-6">
+                    <button id="load-more-btn" class="hidden px-8 py-3 bg-surface-container border border-outline-variant/30 text-white font-label-md text-label-md rounded-full hover:bg-surface-container-high hover:border-primary-container/50 hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 shadow-lg cursor-pointer">
+                        <span id="load-more-spinner" class="material-symbols-outlined text-[20px] animate-spin hidden">sync</span>
+                        <span id="load-more-text" data-i18n="common.loadMore">Carica altro</span>
+                    </button>
+                </div>
             </section>
         </main>
     </div>
 
     <!-- BottomNavBar -->
-    <nav class="md:hidden flex justify-around items-center h-16 pb-safe w-full fixed bottom-0 z-50 rounded-t-xl bg-surface-container-lowest/90 backdrop-blur-2xl border-t border-outline-variant/20 shadow-xl text-primary-container font-label-sm text-label-sm">
+    <nav
+        class="md:hidden flex justify-around items-center h-16 pb-safe w-full fixed bottom-0 z-50 rounded-t-xl bg-surface-container-lowest/90 backdrop-blur-2xl border-t border-outline-variant/20 shadow-xl text-primary-container font-label-sm text-label-sm">
         <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/index.html">
             <span class="material-symbols-outlined">home</span>
             <span data-i18n="bottomNav.home">Home</span>
         </a>
-        <a class="flex flex-col items-center justify-center text-primary-container drop-shadow-[0_0_8px_rgba(255,215,0,0.4)] hover:opacity-100 scale-110 duration-200" href="/list.html?type=top_rated">
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="#" onclick="openMobileSearchOverlay(event)">
             <span class="material-symbols-outlined">search</span>
             <span data-i18n="bottomNav.search">Cerca</span>
         </a>
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="#">
-            <span class="material-symbols-outlined">movie_filter</span>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200 relative" href="/notifications.html">
+            <span class="material-symbols-outlined">notifications</span>
+            <span data-i18n="nav.notifications">Notifiche</span>
+            <span id="bottom-notifications-badge" class="hidden absolute top-0.5 right-4 bg-red-500 text-white font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border border-background z-10">0</span>
+        </a>
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/list.html?type=watchlist">
+            <span class="material-symbols-outlined">bookmark</span>
             <span data-i18n="bottomNav.watchlist">Watchlist</span>
         </a>
-        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="#">
+        <a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 scale-110 duration-200" href="/account.html">
             <span class="material-symbols-outlined">person</span>
             <span data-i18n="bottomNav.profile">Profilo</span>
         </a>

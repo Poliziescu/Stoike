@@ -51,11 +51,36 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (titleEl) titleEl.innerText = pageTitle;
 
+    let currentPage = 1;
+    let totalPages = 1;
+
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const loadMoreSpinner = document.getElementById('load-more-spinner');
+
+    function getPagedEndpoint(baseEndpoint, page) {
+        const separator = baseEndpoint.includes('?') ? '&' : '?';
+        return `${baseEndpoint}${separator}page=${page}`;
+    }
+
+    async function loadPage(page) {
+        const pagedEndpoint = getPagedEndpoint(endpoint, page);
+        const data = await fetchTMDB(pagedEndpoint);
+        if (data) {
+            totalPages = data.total_pages || 1;
+            return data.results ? data.results.map(m => mapTMDBMovie(m)) : [];
+        }
+        return [];
+    }
+
     try {
-        const data = await fetchTMDB(endpoint);
-        if (data && data.results && data.results.length > 0) {
-            const movies = data.results.map(m => mapTMDBMovie(m));
+        const movies = await loadPage(1);
+        if (movies && movies.length > 0) {
             gridEl.innerHTML = movies.map(movie => renderMovieCard(movie)).join('');
+            if (totalPages > 1) {
+                loadMoreBtn.classList.remove('hidden');
+            } else {
+                loadMoreBtn.classList.add('hidden');
+            }
         } else {
             gridEl.innerHTML = `
                 <div class="col-span-full text-center py-16 text-on-surface-variant">
@@ -63,9 +88,42 @@ document.addEventListener('DOMContentLoaded', async () => {
                     ${i18n.t('list.noMovies')}
                 </div>
             `;
+            loadMoreBtn.classList.add('hidden');
         }
     } catch (e) {
         console.error('Error loading list:', e);
         gridEl.innerHTML = `<div class="col-span-full text-center text-red-400 py-12">${i18n.t('list.error')}</div>`;
+        loadMoreBtn.classList.add('hidden');
+    }
+
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', async () => {
+            if (currentPage >= totalPages) return;
+
+            loadMoreSpinner.classList.remove('hidden');
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.classList.add('opacity-70');
+
+            currentPage++;
+
+            try {
+                const nextMovies = await loadPage(currentPage);
+                if (nextMovies && nextMovies.length > 0) {
+                    const html = nextMovies.map(movie => renderMovieCard(movie)).join('');
+                    gridEl.insertAdjacentHTML('beforeend', html);
+                }
+                
+                if (currentPage >= totalPages) {
+                    loadMoreBtn.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Error loading more movies:', e);
+                currentPage--;
+            } finally {
+                loadMoreSpinner.classList.add('hidden');
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.classList.remove('opacity-70');
+            }
+        });
     }
 });

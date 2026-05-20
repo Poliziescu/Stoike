@@ -33,6 +33,64 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     container.innerHTML = gHTML;
 
+    let currentGenreId = '';
+    let currentGenreName = 'All';
+    let currentPage = 1;
+    let totalPages = 1;
+
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const loadMoreSpinner = document.getElementById('load-more-spinner');
+
+    function getPagedEndpoint(genreId, page) {
+        if (genreId) {
+            return `/discover/movie?with_genres=${genreId}&sort_by=popularity.desc&page=${page}`;
+        } else {
+            return `/trending/movie/week?page=${page}`;
+        }
+    }
+
+    async function loadPage(page) {
+        const pagedEndpoint = getPagedEndpoint(currentGenreId, page);
+        const data = await fetchTMDB(pagedEndpoint);
+        if (data) {
+            totalPages = data.total_pages || 1;
+            return data.results ? data.results.map(m => mapTMDBMovie(m)) : [];
+        }
+        return [];
+    }
+
+    async function selectGenre(genreId, genreName) {
+        currentGenreId = genreId;
+        currentGenreName = genreName;
+        currentPage = 1;
+
+        if (sectionTitle) {
+            sectionTitle.innerText = genreId ? `${i18n.t('genres.genreLabel')} ${genreName}` : i18n.t('genres.allGenres');
+        }
+
+        gridEl.innerHTML = `<div class="col-span-full text-center py-12"><span class="opacity-50">${i18n.t('genres.loadingMovies')}</span></div>`;
+        if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+
+        try {
+            const movies = await loadPage(1);
+            if (movies && movies.length > 0) {
+                gridEl.innerHTML = movies.map(movie => renderMovieCard(movie)).join('');
+                if (totalPages > 1) {
+                    loadMoreBtn.classList.remove('hidden');
+                } else {
+                    loadMoreBtn.classList.add('hidden');
+                }
+            } else {
+                gridEl.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-12">${i18n.t('genres.noMovies')}</div>`;
+                if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+            }
+        } catch (e) {
+            console.error('Error loading movies:', e);
+            gridEl.innerHTML = `<div class="col-span-full text-center text-red-400 py-12">${i18n.t('genres.error')}</div>`;
+            if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+        }
+    }
+
     // Attach click listeners to pills
     const buttons = document.querySelectorAll('.genre-btn');
     buttons.forEach(btn => {
@@ -46,31 +104,40 @@ document.addEventListener('DOMContentLoaded', async () => {
             });
             btn.className = "genre-btn px-6 py-3 bg-primary-container text-black font-label-md text-label-md rounded-full shadow-lg transition-all duration-300 transform scale-105";
 
-            // Load genre movies
-            gridEl.innerHTML = `<div class="col-span-full text-center py-12"><span class="opacity-50">${i18n.t('genres.loadingMovies')}</span></div>`;
-            
-            let endpoint = '/trending/movie/week';
-            if (genreId) {
-                endpoint = `/discover/movie?with_genres=${genreId}&sort_by=popularity.desc`;
-            }
-
-            if (sectionTitle) {
-                sectionTitle.innerText = genreId ? `${i18n.t('genres.genreLabel')} ${genreName}` : i18n.t('genres.allGenres');
-            }
-
-            try {
-                const data = await fetchTMDB(endpoint);
-                if (data && data.results) {
-                    const movies = data.results.map(m => mapTMDBMovie(m));
-                    gridEl.innerHTML = movies.map(movie => renderMovieCard(movie)).join('');
-                } else {
-                    gridEl.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-12">${i18n.t('genres.noMovies')}</div>`;
-                }
-            } catch (e) {
-                gridEl.innerHTML = `<div class="col-span-full text-center text-red-400 py-12">${i18n.t('genres.error')}</div>`;
-            }
+            await selectGenre(genreId, genreName);
         });
     });
+
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', async () => {
+            if (currentPage >= totalPages) return;
+
+            loadMoreSpinner.classList.remove('hidden');
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.classList.add('opacity-70');
+
+            currentPage++;
+
+            try {
+                const nextMovies = await loadPage(currentPage);
+                if (nextMovies && nextMovies.length > 0) {
+                    const html = nextMovies.map(movie => renderMovieCard(movie)).join('');
+                    gridEl.insertAdjacentHTML('beforeend', html);
+                }
+                
+                if (currentPage >= totalPages) {
+                    loadMoreBtn.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Error loading more movies:', e);
+                currentPage--;
+            } finally {
+                loadMoreSpinner.classList.add('hidden');
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.classList.remove('opacity-70');
+            }
+        });
+    }
 
     // Auto-click the first pill "All" to trigger initial population
     const allBtn = document.querySelector('.genre-btn[data-genre="All"]');

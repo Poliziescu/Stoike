@@ -1003,7 +1003,369 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Highlight active link in the navigation bars
     highlightActiveNav();
+
+    // Inject mobile search overlay HTML on page load
+    injectMobileSearchOverlay();
+
+    // Setup global notifications click/badge behavior
+    setupGlobalNotificationsBehavior();
+    updateNotificationsCount();
+    // Update count periodically every 30 seconds
+    setInterval(updateNotificationsCount, 30000);
 });
+
+// ── Unified Notifications & Badges System ──
+
+async function updateNotificationsCount() {
+    const user = localStorage.getItem('stoike_user');
+    const badges = document.querySelectorAll('#nav-notifications-badge, #bottom-notifications-badge, .notifications-badge');
+    if (!user) {
+        badges.forEach(b => {
+            b.classList.add('hidden');
+            b.innerText = '0';
+        });
+        return;
+    }
+    try {
+        const resp = await fetch(`/api/notifications/${encodeURIComponent(user)}?_t=${Date.now()}`);
+        if (resp.ok) {
+            const notifs = await resp.json();
+            const readKey = `stoike_read_notifications_${user}`;
+            let readIds = [];
+            try {
+                readIds = JSON.parse(localStorage.getItem(readKey)) || [];
+            } catch(e){}
+            const unread = notifs.filter(n => !readIds.includes(n.id)).length;
+            badges.forEach(b => {
+                if (unread > 0) {
+                    b.innerText = unread;
+                    b.classList.remove('hidden');
+                } else {
+                    b.classList.add('hidden');
+                    b.innerText = '0';
+                }
+            });
+        }
+    } catch(e) {
+        console.warn("Impossibile caricare il conteggio notifiche:", e);
+    }
+}
+
+function setupGlobalNotificationsBehavior() {
+    const bellBtns = [];
+    document.querySelectorAll('button, a').forEach(el => {
+        const hasBellIcon = el.querySelector('[data-icon="notifications"]') || 
+                            (el.querySelector('.material-symbols-outlined') && el.querySelector('.material-symbols-outlined').innerText.trim() === 'notifications') ||
+                            el.getAttribute('title') === 'Notifiche';
+        if (hasBellIcon && !el.classList.contains('md:hidden') && el.tagName !== 'A') {
+            bellBtns.push(el);
+        }
+    });
+
+    bellBtns.forEach(btn => {
+        btn.setAttribute('onclick', "window.location.href='/notifications.html'");
+        btn.style.cursor = 'pointer';
+        btn.classList.add('relative');
+        
+        let badge = btn.querySelector('.notifications-badge, #nav-notifications-badge');
+        if (!badge) {
+            badge = document.createElement('span');
+            badge.id = 'nav-notifications-badge';
+            badge.className = 'notifications-badge hidden absolute top-0.5 right-0.5 bg-red-500 text-white font-bold text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center border border-background z-10';
+            btn.appendChild(badge);
+        }
+    });
+}
+
+window.updateNotificationsCount = updateNotificationsCount;
+
+// ── Mobile Search Overlay Logic ──
+
+function injectMobileSearchOverlay() {
+    if (document.getElementById('mobile-search-overlay')) return;
+
+    const overlayDiv = document.createElement('div');
+    overlayDiv.id = 'mobile-search-overlay';
+    overlayDiv.className = 'fixed inset-0 z-[9999] bg-background/95 backdrop-blur-2xl hidden flex-col p-6 transition-all duration-300 opacity-0';
+    overlayDiv.innerHTML = `
+        <div class="flex justify-between items-center mb-6">
+            <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary-container text-[28px]">search</span>
+                <span class="text-xl font-bold text-white" data-i18n="bottomNav.search">Cerca nel Catalogo</span>
+            </div>
+            <button onclick="closeMobileSearchOverlay()" class="p-2 hover:bg-white/5 rounded-full text-on-surface-variant hover:text-white transition-colors">
+                <span class="material-symbols-outlined text-[28px]">close</span>
+            </button>
+        </div>
+        <div class="flex flex-col gap-4 font-headline-sm">
+            <div class="flex gap-2">
+                <div class="relative flex-grow">
+                    <input id="mobile-search-input" class="w-full bg-black/60 border border-outline-variant/30 rounded-xl px-4 py-3 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors text-base" placeholder="Cerca film..." type="text" autocomplete="off" data-i18n-placeholder="search.placeholder" />
+                    <span class="material-symbols-outlined absolute right-3 top-3.5 text-on-surface-variant cursor-pointer text-[22px]" onclick="executeMobileSearch()">search</span>
+                </div>
+                <div class="relative w-24">
+                    <input id="mobile-search-year-input" type="text" class="w-full bg-black/60 border border-outline-variant/30 rounded-xl px-2 py-3 text-white focus:border-primary-container focus:ring-0 outline-none transition-colors text-center text-base cursor-pointer" placeholder="Anno" data-i18n-placeholder="search.year" autocomplete="off" readonly />
+                </div>
+            </div>
+            
+            <!-- Mobile Year Picker Dropdown -->
+            <div id="mobile-year-picker-dropdown" class="hidden flex-col bg-surface-container/95 border border-outline-variant/20 rounded-2xl p-4 shadow-2xl">
+                <div class="flex justify-between items-center mb-4">
+                    <button id="myp-prev" class="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">chevron_left</span></button>
+                    <span id="myp-decade-label" class="font-bold text-white text-base"></span>
+                    <button id="myp-next" class="p-2 hover:bg-white/10 rounded-full transition-colors flex items-center justify-center"><span class="material-symbols-outlined text-[20px]">chevron_right</span></button>
+                </div>
+                <div id="myp-grid" class="grid grid-cols-5 gap-2"></div>
+                <div class="mt-4 pt-2 border-t border-outline-variant/10 text-center flex justify-between">
+                    <button id="myp-clear" class="text-sm text-red-400 hover:text-red-300 transition-colors" data-i18n="search.clearYear">Pulisci</button>
+                    <button id="myp-close" class="text-sm text-primary-container hover:underline transition-colors font-bold">Ok</button>
+                </div>
+            </div>
+
+            <!-- Mobile Suggestions Box -->
+            <div id="mobile-search-suggestions" class="hidden flex-col bg-surface-container/40 border border-outline-variant/10 rounded-2xl shadow-xl overflow-hidden max-h-[300px] overflow-y-auto">
+                <!-- Suggestions will be injected here -->
+            </div>
+            
+            <button onclick="executeMobileSearch()" class="w-full py-4 mt-2 bg-primary-container text-black font-bold rounded-xl hover:bg-primary transition-all duration-300 shadow-lg shadow-primary-container/20 flex justify-center items-center gap-2">
+                <span class="material-symbols-outlined">search</span>
+                <span data-i18n="bottomNav.search">Cerca</span>
+            </button>
+        </div>
+    `;
+    document.body.appendChild(overlayDiv);
+
+    setupMobileSearchOverlayLogic();
+}
+
+function setupMobileSearchOverlayLogic() {
+    const input = document.getElementById('mobile-search-input');
+    const yearInput = document.getElementById('mobile-search-year-input');
+    const suggestionsBox = document.getElementById('mobile-search-suggestions');
+    
+    let searchTimeout = null;
+
+    function triggerMobileSearchSuggest() {
+        clearTimeout(searchTimeout);
+        const q = input ? input.value.trim() : '';
+        const y = yearInput ? yearInput.value.trim() : '';
+        
+        if (!q && !y) {
+            if (suggestionsBox) {
+                suggestionsBox.classList.add('hidden');
+                suggestionsBox.classList.remove('flex');
+            }
+            return;
+        }
+
+        if (suggestionsBox) {
+            suggestionsBox.innerHTML = `<div class="p-4 text-center font-label-md text-on-surface-variant animate-pulse">. . .</div>`;
+            suggestionsBox.classList.remove('hidden');
+            suggestionsBox.classList.add('flex');
+        }
+
+        searchTimeout = setTimeout(() => {
+            fetchMobileSuggestions();
+        }, 500);
+    }
+
+    if (input) {
+        input.addEventListener('input', triggerMobileSearchSuggest);
+        input.addEventListener('focus', triggerMobileSearchSuggest);
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') executeMobileSearch();
+        });
+    }
+
+    if (yearInput) {
+        yearInput.addEventListener('input', triggerMobileSearchSuggest);
+        yearInput.addEventListener('focus', triggerMobileSearchSuggest);
+        yearInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') executeMobileSearch();
+        });
+    }
+
+    // Hide mobile suggestions on click outside
+    document.addEventListener('click', (e) => {
+        const overlay = document.getElementById('mobile-search-overlay');
+        if (overlay && suggestionsBox && !overlay.contains(e.target) && !e.target.closest('#mobile-search-suggestions')) {
+            suggestionsBox.classList.add('hidden');
+            suggestionsBox.classList.remove('flex');
+        }
+    });
+
+    // Mobile Year Picker Dropdown
+    const mypDropdown = document.getElementById('mobile-year-picker-dropdown');
+    const mypPrev = document.getElementById('myp-prev');
+    const mypNext = document.getElementById('myp-next');
+    const mypClear = document.getElementById('myp-clear');
+    const mypClose = document.getElementById('myp-close');
+    
+    let currentMobileDecadeStart = Math.floor(new Date().getFullYear() / 10) * 10;
+
+    function renderMobileYearPicker() {
+        const ypLabel = document.getElementById('myp-decade-label');
+        const ypGrid = document.getElementById('myp-grid');
+        if (!ypLabel || !ypGrid) return;
+        
+        ypLabel.innerText = `${currentMobileDecadeStart} - ${currentMobileDecadeStart + 9}`;
+        ypGrid.innerHTML = '';
+        for (let i = 0; i < 10; i++) {
+            const year = currentMobileDecadeStart + i;
+            const btn = document.createElement('button');
+            btn.className = 'py-2 px-1 rounded-md text-xs text-on-surface-variant hover:bg-white/10 hover:text-white transition-colors';
+            if (yearInput && yearInput.value == year) {
+                btn.className = 'py-2 px-1 rounded-md text-xs bg-primary-container text-black font-bold shadow-lg';
+            }
+            btn.innerText = year;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if (yearInput) {
+                    yearInput.value = year;
+                    triggerMobileSearchSuggest();
+                }
+                if (mypDropdown) {
+                    mypDropdown.classList.add('hidden');
+                    mypDropdown.classList.remove('flex');
+                }
+            });
+            ypGrid.appendChild(btn);
+        }
+    }
+
+    if (yearInput && mypDropdown) {
+        yearInput.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (yearInput.value) {
+                currentMobileDecadeStart = Math.floor(parseInt(yearInput.value) / 10) * 10;
+            } else {
+                currentMobileDecadeStart = Math.floor(new Date().getFullYear() / 10) * 10;
+            }
+            renderMobileYearPicker();
+            mypDropdown.classList.toggle('hidden');
+            mypDropdown.classList.toggle('flex');
+        });
+        
+        if (mypPrev) mypPrev.addEventListener('click', (e) => { e.stopPropagation(); currentMobileDecadeStart -= 10; renderMobileYearPicker(); });
+        if (mypNext) mypNext.addEventListener('click', (e) => { e.stopPropagation(); currentMobileDecadeStart += 10; renderMobileYearPicker(); });
+        
+        if (mypClear) mypClear.addEventListener('click', (e) => {
+            e.stopPropagation();
+            yearInput.value = '';
+            mypDropdown.classList.add('hidden');
+            mypDropdown.classList.remove('flex');
+            triggerMobileSearchSuggest();
+        });
+
+        if (mypClose) mypClose.addEventListener('click', (e) => {
+            e.stopPropagation();
+            mypDropdown.classList.add('hidden');
+            mypDropdown.classList.remove('flex');
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!yearInput.contains(e.target) && !mypDropdown.contains(e.target)) {
+                mypDropdown.classList.add('hidden');
+                mypDropdown.classList.remove('flex');
+            }
+        });
+    }
+}
+
+window.openMobileSearchOverlay = function(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    const overlay = document.getElementById('mobile-search-overlay');
+    if (overlay) {
+        overlay.classList.remove('hidden');
+        overlay.classList.add('flex');
+        // Apply translations inside overlay dynamically
+        if (window.i18n) {
+            window.i18n.applyTranslations();
+        }
+        setTimeout(() => {
+            overlay.classList.remove('opacity-0');
+            overlay.classList.add('opacity-100');
+        }, 10);
+        const input = document.getElementById('mobile-search-input');
+        if (input) input.focus();
+    }
+};
+
+window.closeMobileSearchOverlay = function() {
+    const overlay = document.getElementById('mobile-search-overlay');
+    if (overlay) {
+        overlay.classList.remove('opacity-100');
+        overlay.classList.add('opacity-0');
+        setTimeout(() => {
+            overlay.classList.remove('flex');
+            overlay.classList.add('hidden');
+        }, 300);
+    }
+};
+
+window.executeMobileSearch = function() {
+    const input = document.getElementById('mobile-search-input');
+    const yearInput = document.getElementById('mobile-search-year-input');
+    const query = input ? input.value.trim() : '';
+    const year = yearInput ? yearInput.value.trim() : '';
+    if (!query && !year) return;
+    let url = '/list.html?';
+    if (query) url += `query=${encodeURIComponent(query)}&`;
+    if (year) url += `year=${encodeURIComponent(year)}`;
+    window.location.href = url;
+};
+
+async function fetchMobileSuggestions() {
+    const suggestionsBox = document.getElementById('mobile-search-suggestions');
+    const input = document.getElementById('mobile-search-input');
+    const yearInput = document.getElementById('mobile-search-year-input');
+    
+    if (!suggestionsBox) return;
+
+    const query = input ? input.value.trim() : '';
+    const year = yearInput ? yearInput.value.trim() : '';
+
+    if (!query && !year) {
+        suggestionsBox.classList.add('hidden');
+        suggestionsBox.classList.remove('flex');
+        return;
+    }
+
+    let endpoint = '';
+    if (query && year) {
+        endpoint = `/search/movie?query=${encodeURIComponent(query)}&primary_release_year=${encodeURIComponent(year)}`;
+    } else if (query) {
+        endpoint = `/search/movie?query=${encodeURIComponent(query)}`;
+    } else if (year) {
+        endpoint = `/discover/movie?primary_release_year=${encodeURIComponent(year)}&sort_by=popularity.desc`;
+    }
+    
+    const rawData = await fetchTMDB(endpoint);
+    
+    if (rawData && rawData.results && rawData.results.length > 0) {
+        suggestionsBox.innerHTML = '';
+        rawData.results.slice(0, 5).forEach(m => {
+            const movie = mapTMDBMovie(m);
+            const item = document.createElement('div');
+            item.className = 'flex items-center gap-3 p-3 hover:bg-surface-container-high cursor-pointer transition-colors border-b border-outline-variant/10 last:border-0';
+            item.innerHTML = `<img src="${movie.poster_url}" class="w-10 h-14 object-cover rounded shadow-sm" alt="${movie.title}" onerror="this.src='https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover'"><div class="flex-1 min-w-0"><div class="font-label-md text-white truncate">${movie.title}</div><div class="font-label-sm text-on-surface-variant">${movie.release_year} • <span class="material-symbols-outlined text-[12px] material-fill-1 text-primary-container align-middle">star</span> ${movie.rating}</div></div>`;
+            item.addEventListener('click', () => {
+                suggestionsBox.classList.add('hidden');
+                suggestionsBox.classList.remove('flex');
+                if (input) input.value = '';
+                if (yearInput) yearInput.value = '';
+                closeMobileSearchOverlay();
+                window.location.href = `/movie.html?id=${movie.id}`;
+            });
+            suggestionsBox.appendChild(item);
+        });
+    } else {
+        suggestionsBox.innerHTML = `<div class="p-4 text-center font-label-md text-on-surface-variant">${window.i18n ? i18n.t('search.noResults') : 'Nessun risultato'}</div>`;
+    }
+}
 
 // Utility to apply CSS classes to nav links matching the current pathname/query
 function highlightActiveNav() {

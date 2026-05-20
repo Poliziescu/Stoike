@@ -27,6 +27,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const popularSection = document.getElementById('popular-actors-section');
     const popularGrid = document.getElementById('popular-actors-grid');
 
+    // Load More Elements & State
+    const loadMorePopularBtn = document.getElementById('load-more-popular-btn');
+    const loadMorePopularSpinner = document.getElementById('load-more-popular-spinner');
+    let popularCurrentPage = 1;
+    let popularTotalPages = 1;
+
+    const loadMoreFilmographyBtn = document.getElementById('load-more-filmography-btn');
+    const loadMoreFilmographySpinner = document.getElementById('load-more-filmography-spinner');
+    let filmographyMovies = [];
+    let filmographyCurrentBatch = 0;
+    const batchSize = 24;
+
     // Execute the search pipeline
     async function executeActorSearch(query) {
         if (!query) return;
@@ -114,17 +126,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                     .sort((a, b) => (b.popularity || 0) - (a.popularity || 0));
 
                 if (sortedCast.length > 0) {
-                    // Map to our unified data model and limit to top 24 movies
-                    const mappedMovies = sortedCast.slice(0, 24).map(m => mapTMDBMovie(m));
-                    moviesGrid.innerHTML = mappedMovies.map(movie => renderMovieCard(movie)).join('');
+                    filmographyMovies = sortedCast.map(m => mapTMDBMovie(m));
+                    filmographyCurrentBatch = 0;
+                    renderNextFilmographyBatch(true);
                     moviesSection.classList.remove('hidden');
                 } else {
                     moviesGrid.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-8">${i18n.t('actors.noFilms')}</div>`;
                     moviesSection.classList.remove('hidden');
+                    if (loadMoreFilmographyBtn) loadMoreFilmographyBtn.classList.add('hidden');
                 }
             } else {
                 moviesGrid.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-8">${i18n.t('actors.noFilms')}</div>`;
                 moviesSection.classList.remove('hidden');
+                if (loadMoreFilmographyBtn) loadMoreFilmographyBtn.classList.add('hidden');
             }
 
         } catch (err) {
@@ -206,18 +220,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Auto trigger search if a query URL parameter exists (e.g. redirected from details page)
-    const params = new URLSearchParams(window.location.search);
-    const initialQuery = params.get('query');
-    if (initialQuery) {
-        const decodedQuery = decodeURIComponent(initialQuery);
-        if (searchInput) searchInput.value = decodedQuery;
-        executeActorSearch(decodedQuery);
-    } else {
-        // No query param: load popular/trending actors on page open
-        await loadPopularActors();
-    }
-
     // Render a single actor card for the popular grid
     function renderActorCard(person) {
         const photoUrl = person.profile_path
@@ -246,20 +248,114 @@ document.addEventListener('DOMContentLoaded', async () => {
         `;
     }
 
-    // Fetch and display popular actors from TMDb
-    async function loadPopularActors() {
+    // Fetch and display popular actors from TMDb (with pagination)
+    async function loadPopularActors(page = 1) {
         if (!popularGrid || !popularSection) return;
         try {
-            const data = await fetchTMDB('/person/popular');
+            const data = await fetchTMDB(`/person/popular?page=${page}`);
             if (data && data.results && data.results.length > 0) {
+                popularTotalPages = data.total_pages || 1;
                 const actors = data.results.filter(p => p.profile_path);
-                popularGrid.innerHTML = actors.map(p => renderActorCard(p)).join('');
+                const html = actors.map(p => renderActorCard(p)).join('');
+                
+                if (page === 1) {
+                    popularGrid.innerHTML = html;
+                } else {
+                    popularGrid.insertAdjacentHTML('beforeend', html);
+                }
+
+                if (popularTotalPages > page) {
+                    if (loadMorePopularBtn) loadMorePopularBtn.classList.remove('hidden');
+                } else {
+                    if (loadMorePopularBtn) loadMorePopularBtn.classList.add('hidden');
+                }
             } else {
-                popularGrid.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-8">${i18n.t('actors.notFound')}</div>`;
+                if (page === 1) {
+                    popularGrid.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-8">${i18n.t('actors.notFound')}</div>`;
+                }
+                if (loadMorePopularBtn) loadMorePopularBtn.classList.add('hidden');
             }
         } catch (err) {
             console.error('Error loading popular actors:', err);
-            popularGrid.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-8">${i18n.t('genres.error')}</div>`;
+            if (page === 1) {
+                popularGrid.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-8">${i18n.t('genres.error')}</div>`;
+            }
+            if (loadMorePopularBtn) loadMorePopularBtn.classList.add('hidden');
         }
+    }
+
+    // Render a batch of client-side sliced credits
+    function renderNextFilmographyBatch(isInitial = false) {
+        const start = filmographyCurrentBatch * batchSize;
+        const end = start + batchSize;
+        const batch = filmographyMovies.slice(start, end);
+
+        const html = batch.map(movie => renderMovieCard(movie)).join('');
+        if (isInitial) {
+            moviesGrid.innerHTML = html;
+        } else {
+            moviesGrid.insertAdjacentHTML('beforeend', html);
+        }
+
+        const hasMore = end < filmographyMovies.length;
+        if (hasMore) {
+            if (loadMoreFilmographyBtn) loadMoreFilmographyBtn.classList.remove('hidden');
+        } else {
+            if (loadMoreFilmographyBtn) loadMoreFilmographyBtn.classList.add('hidden');
+        }
+    }
+
+    // Set up load more buttons event listeners
+    if (loadMorePopularBtn) {
+        loadMorePopularBtn.addEventListener('click', async () => {
+            if (popularCurrentPage >= popularTotalPages) return;
+
+            loadMorePopularSpinner.classList.remove('hidden');
+            loadMorePopularBtn.disabled = true;
+            loadMorePopularBtn.classList.add('opacity-70');
+
+            popularCurrentPage++;
+
+            try {
+                await loadPopularActors(popularCurrentPage);
+            } catch (e) {
+                console.error('Error loading more popular actors:', e);
+                popularCurrentPage--;
+            } finally {
+                loadMorePopularSpinner.classList.add('hidden');
+                loadMorePopularBtn.disabled = false;
+                loadMorePopularBtn.classList.remove('opacity-70');
+            }
+        });
+    }
+
+    if (loadMoreFilmographyBtn) {
+        loadMoreFilmographyBtn.addEventListener('click', () => {
+            loadMoreFilmographySpinner.classList.remove('hidden');
+            loadMoreFilmographyBtn.disabled = true;
+            loadMoreFilmographyBtn.classList.add('opacity-70');
+
+            // Simulate slight delay for premium feel
+            setTimeout(() => {
+                filmographyCurrentBatch++;
+                renderNextFilmographyBatch(false);
+                
+                loadMoreFilmographySpinner.classList.add('hidden');
+                loadMoreFilmographyBtn.disabled = false;
+                loadMoreFilmographyBtn.classList.remove('opacity-70');
+            }, 300);
+        });
+    }
+
+    // Auto trigger search if a query URL parameter exists (e.g. redirected from details page)
+    const params = new URLSearchParams(window.location.search);
+    const initialQuery = params.get('query');
+    if (initialQuery) {
+        const decodedQuery = decodeURIComponent(initialQuery);
+        if (searchInput) searchInput.value = decodedQuery;
+        executeActorSearch(decodedQuery);
+    } else {
+        // No query param: load popular/trending actors on page open
+        await loadPopularActors(1);
     }
 });

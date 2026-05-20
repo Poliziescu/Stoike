@@ -22,6 +22,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     const gridEl = document.getElementById('movies-grid');
     if (!gridEl) return;
 
+    let trendingCurrentPage = 1;
+    let trendingTotalPages = 1;
+    const loadMoreBtn = document.getElementById('load-more-btn');
+    const loadMoreSpinner = document.getElementById('load-more-spinner');
+
+    async function loadTrendingMovies(page) {
+        try {
+            const data = await fetchTMDB(`/trending/movie/week?page=${page}`);
+            if (data && data.results && data.results.length > 0) {
+                trendingTotalPages = data.total_pages || 1;
+                return data.results.map(m => mapTMDBMovie(m));
+            }
+        } catch (e) {
+            console.error('Error loading trending page:', e);
+        }
+        return [];
+    }
+
     try {
         // 1. Fetch Now Playing movies for Hero Banner and Trending for grid in parallel
         const [nowPlayingData, trendingData] = await Promise.all([
@@ -42,6 +60,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Prepare Trending movies for grid
         let trendingMovies = [];
         if (trendingData && trendingData.results && trendingData.results.length > 0) {
+            trendingTotalPages = trendingData.total_pages || 1;
             trendingMovies = trendingData.results.map(m => mapTMDBMovie(m));
         }
 
@@ -65,12 +84,50 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (trendingMovies.length > 0) {
             // Render the whole list of trending movies in the main grid
             gridEl.innerHTML = trendingMovies.map(movie => renderMovieCard(movie)).join('');
+            if (trendingTotalPages > 1) {
+                if (loadMoreBtn) loadMoreBtn.classList.remove('hidden');
+            } else {
+                if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+            }
         } else {
             gridEl.innerHTML = `<div class="col-span-full text-center text-on-surface-variant py-12">${i18n.t('home.noMovies')}</div>`;
+            if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
         }
     } catch (e) {
         console.error('Error loading home content:', e);
         gridEl.innerHTML = `<div class="col-span-full text-center text-red-400 py-12">${i18n.t('home.errorLoading')}</div>`;
+        if (loadMoreBtn) loadMoreBtn.classList.add('hidden');
+    }
+
+    if (loadMoreBtn) {
+        loadMoreBtn.addEventListener('click', async () => {
+            if (trendingCurrentPage >= trendingTotalPages) return;
+
+            loadMoreSpinner.classList.remove('hidden');
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.classList.add('opacity-70');
+
+            trendingCurrentPage++;
+
+            try {
+                const nextMovies = await loadTrendingMovies(trendingCurrentPage);
+                if (nextMovies && nextMovies.length > 0) {
+                    const html = nextMovies.map(movie => renderMovieCard(movie)).join('');
+                    gridEl.insertAdjacentHTML('beforeend', html);
+                }
+                
+                if (trendingCurrentPage >= trendingTotalPages) {
+                    loadMoreBtn.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error('Error loading more trending movies:', e);
+                trendingCurrentPage--;
+            } finally {
+                loadMoreSpinner.classList.add('hidden');
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.classList.remove('opacity-70');
+            }
+        });
     }
 });
 
