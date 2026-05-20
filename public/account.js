@@ -173,7 +173,8 @@ async function handleProfileSave(event) {
             // Successo! Aggiorna stato locale e visuale
             showStatus(window.i18n ? i18n.t('account.success') : 'Profilo salvato con successo!', 'success');
             
-            // Salva lo stato corrente come nuovo "originale"
+            // Aggiorna l'input nickname visualizzato
+            if (nicknameInput) nicknameInput.value = data.nickname;
             originalProfile.nickname = data.nickname;
             if (data.avatar_url) {
                 originalProfile.avatar_url = data.avatar_url;
@@ -251,6 +252,67 @@ function showStatus(message, type) {
     // Scrolla per mostrare il banner se necessario
     statusBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
+
+// Chiede conferma ed elimina definitivamente l'account
+window.confirmDeleteAccount = async function() {
+    const username = originalProfile.username;
+    if (!username) return;
+
+    const confirmMsg = window.i18n ? i18n.t('account.deleteConfirm') : "Sei sicuro di voler eliminare definitivamente il tuo account? Questa azione è irreversibile.";
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    const deleteBtn = document.getElementById('delete-account-btn');
+    let originalBtnHTML = '';
+    if (deleteBtn) {
+        originalBtnHTML = deleteBtn.innerHTML;
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[20px] align-middle mr-2">sync</span>Eliminazione...';
+        deleteBtn.classList.add('opacity-70');
+    }
+
+    try {
+        const response = await fetch('/api/user/account', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ username })
+        });
+
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+            alert(window.i18n ? i18n.t('account.deleteSuccess') : "Account eliminato con successo.");
+            
+            // Pulisce la sessione locale
+            localStorage.removeItem('stoike_user');
+            localStorage.removeItem('stoike_role');
+            localStorage.removeItem('stoike_nickname');
+            localStorage.removeItem('stoike_avatar');
+            localStorage.removeItem('stoike_saved_movies_' + username);
+            localStorage.removeItem('stoike_email_' + username);
+            
+            // Reindirizza alla home page
+            window.location.href = '/index.html';
+        } else {
+            alert(data.message || "Errore durante l'eliminazione dell'account.");
+            if (deleteBtn) {
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = originalBtnHTML;
+                deleteBtn.classList.remove('opacity-70');
+            }
+        }
+    } catch (err) {
+        alert("Errore di connessione con il server.");
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = originalBtnHTML;
+            deleteBtn.classList.remove('opacity-70');
+        }
+    }
+};
 
 // Estende le traduzioni di i18n per la pagina account
 function extendI18nTranslations() {
@@ -354,6 +416,41 @@ function extendI18nTranslations() {
             fr: 'Profil enregistré avec succès !',
             es: '¡Perfil guardado con éxito!',
             de: 'Profil erfolgreich gespeichert!'
+        },
+        'account.dangerZone': {
+            it: 'Zona di Pericolo',
+            en: 'Danger Zone',
+            fr: 'Zone de Danger',
+            es: 'Zona de Peligro',
+            de: 'Gefahrenzone'
+        },
+        'account.dangerZoneSpecs': {
+            it: 'Una volta eliminato il tuo account, tutti i tuoi dati, le recensioni ed i promemoria verranno persi definitivamente.',
+            en: 'Once your account is deleted, all your data, reviews and reminders will be permanently lost.',
+            fr: 'Une fois votre compte supprimé, toutes vos données, avis et rappels seront définitivement perdus.',
+            es: 'Una vez eliminada la cuenta, todos tus datos, opiniones y recordatorios se perderán para sempre.',
+            de: 'Sobald dein Konto gelöscht ist, gehen alle deine Daten, Bewertungen und Erinnerungen dauerhaft verloren.'
+        },
+        'account.deleteAccount': {
+            it: 'Elimina Account',
+            en: 'Delete Account',
+            fr: 'Supprimer le Compte',
+            es: 'Eliminar Cuenta',
+            de: 'Konto löschen'
+        },
+        'account.deleteConfirm': {
+            it: 'Sei sicuro di voler eliminare definitivamente il tuo account? Questa azione è irreversibile.',
+            en: 'Are you sure you want to permanently delete your account? This action is irreversible.',
+            fr: 'Êtes-vous sûr di voler eliminare definitivamente il tuo account? Questa azione è irreversibile.',
+            es: '¿Estás seguro de que deseas eliminar permanentemente tu cuenta? Esta acción es irreversible.',
+            de: 'Bist du sicher, dass du dein Konto dauerhaft löschen möchtest? Diese Aktion ist unumkehrbar.'
+        },
+        'account.deleteSuccess': {
+            it: 'Account eliminato con successo.',
+            en: 'Account deleted successfully.',
+            fr: 'Compte supprimé avec succès.',
+            es: 'Cuenta eliminada con éxito.',
+            de: 'Konto erfolgreich gelöscht.'
         }
     };
 

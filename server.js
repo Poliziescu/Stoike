@@ -307,13 +307,13 @@ app.post('/api/user/profile', async (req, res) => {
 
     let finalNickname = nickname ? nickname.trim() : '';
 
-    // 1. Verifica dell'unicità del nickname
+    // 1. Verifica dell'unicità del nickname (sia contro altri nickname che contro altri username)
     if (finalNickname) {
         try {
-            // Controlla su Supabase REST
+            // Controlla su Supabase REST se il nickname è già in uso come username o come nickname da qualcun altro
             const response = await axios.get(`${SUPABASE_URL}/rest/v1/users`, {
                 params: {
-                    nickname: `eq.${finalNickname}`,
+                    or: `(username.ilike."${finalNickname}",nickname.ilike."${finalNickname}")`,
                     username: `neq.${username}`,
                     select: 'username'
                 },
@@ -325,11 +325,14 @@ app.post('/api/user/profile', async (req, res) => {
             }
         } catch (error) {
             console.warn(`⚠️ [Profile Update] Errore unicità nickname Supabase. Fallback locale:`, error.message);
-            // Fallback locale per verificare l'unicità
+            // Fallback locale per verificare l'unicità su sia nickname che username
             const localProfiles = getLocalProfiles();
-            const exists = Object.keys(localProfiles).some(u =>
-                u !== username && localProfiles[u].nickname && localProfiles[u].nickname.toLowerCase() === finalNickname.toLowerCase()
-            );
+            const exists = Object.keys(localProfiles).some(u => {
+                const isDifferentUser = u.toLowerCase() !== username.toLowerCase();
+                const matchesUsername = u.toLowerCase() === finalNickname.toLowerCase();
+                const matchesNickname = localProfiles[u].nickname && localProfiles[u].nickname.toLowerCase() === finalNickname.toLowerCase();
+                return isDifferentUser && (matchesUsername || matchesNickname);
+            });
             if (exists) {
                 return res.status(400).json({ success: false, message: 'Questo nickname è già in uso da un altro utente.' });
             }
@@ -392,6 +395,59 @@ app.post('/api/user/profile', async (req, res) => {
         nickname: finalProfile.nickname || finalNickname,
         avatar_url: finalProfile.avatar_url || undefined
     });
+});
+
+
+// DELETE: Elimina account utente (con pulizia local/remote)
+app.delete('/api/user/account', async (req, res) => {
+    const username = (req.body && req.body.username) || req.query.username;
+    console.log(`🗑️ [Account Delete] Richiesta cancellazione account per: '${username}'`);
+    if (!username) {
+        return res.status(400).json({ success: false, message: 'Username obbligatorio.' });
+    }
+
+    try {
+        // 1. Tenta la cancellazione su Supabase REST
+        const response = await axios.delete(`${SUPABASE_URL}/rest/v1/users`, {
+            params: {
+                username: `eq.${username}`
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`🗑️ [Account Delete] Supabase eliminato con successo per '${username}'`);
+    } catch (error) {
+        console.warn(`⚠️ [Account Delete] Impossibile eliminare da Supabase (o offline):`, error.message);
+    }
+
+    // 2. Cancella anche da user_profiles.json
+    try {
+        const profiles = getLocalProfiles();
+        const key = Object.keys(profiles).find(k => k.toLowerCase() === username.toLowerCase());
+        if (key) {
+            delete profiles[key];
+            fs.writeFileSync(localProfilesPath, JSON.stringify(profiles, null, 2), 'utf8');
+            console.log(`🗑️ [Account Delete] Profilo locale eliminato per: '${username}'`);
+        }
+    } catch (err) {
+        console.error("❌ Errore nella cancellazione del profilo locale:", err.message);
+    }
+
+    // 3. Cancella anche i promemoria locali/remoti
+    try {
+        await axios.delete(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+            params: {
+                username: `eq.${username}`
+            },
+            headers: supabaseHeaders(),
+            timeout: 10000
+        });
+        console.log(`🗑️ [Account Delete] Promemoria rimossi da Supabase per '${username}'`);
+    } catch (err) {
+        console.warn(`⚠️ [Account Delete] Impossibile eliminare promemoria da Supabase:`, err.message);
+    }
+
+    return res.json({ success: true, message: 'Account eliminato con successo!' });
 });
 
 

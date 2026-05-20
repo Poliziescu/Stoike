@@ -15,6 +15,7 @@
 - [x] Implementare riproduzione trailer con hovering del cursore
 - [x] Implementare pagina per gestione proprio account
 - [] Aggiungere campo email x user e la mail di reminder la deve prendere da DB e non da chiedere all'utente.
-- [] Controllo univocità dello username.
-- [] Aggiunta del tasto "elimina account"
-- [] Salvatagio username e foto profilo su DB
+- [x] Controllo univocità dello username.
+- [x] Aggiunta del tasto "elimina account"
+- [x] Salvatagio username e foto profilo su DB
+- [] Bug su salvataggio/aggiornamento nickname in pagina gestione account
