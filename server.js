@@ -264,8 +264,8 @@ app.get('/api/user/profile', async (req, res) => {
                     success: true,
                     username: user.username,
                     role: user.role || 'user',
-                    nickname: localUser.nickname || user.nickname || '',
-                    avatar_url: localUser.avatar_url || user.avatar_url || ''
+                    nickname: user.nickname || localUser.nickname || '',
+                    avatar_url: user.avatar_url || localUser.avatar_url || ''
                 });
             }
         } catch (rpcError) {
@@ -290,8 +290,8 @@ app.get('/api/user/profile', async (req, res) => {
                 success: true,
                 username: user.username,
                 role: user.role,
-                nickname: localUser.nickname || user.nickname || '',
-                avatar_url: localUser.avatar_url || user.avatar_url || ''
+                nickname: user.nickname || localUser.nickname || '',
+                avatar_url: user.avatar_url || localUser.avatar_url || ''
             });
         } else {
             console.log(`👤 [Profile Get] Utente '${username}' non trovato in Supabase. Fallback locale.`);
@@ -393,10 +393,8 @@ app.post('/api/user/profile', async (req, res) => {
     // 3. Esegui aggiornamento
     const updateDataDB = {};
     if (finalNickname !== undefined) updateDataDB.nickname = finalNickname;
-    // Salviamo l'intera stringa base64 dell'immagine su Supabase in modo che la foto sia effettivamente nel DB
-    if (avatar_data) {
-        updateDataDB.avatar_url = avatar_data;
-    } else if (avatarUrl) {
+    // Salviamo il percorso relativo dell'immagine (URL) su Supabase per caricarlo correttamente dal server
+    if (avatarUrl) {
         updateDataDB.avatar_url = avatarUrl;
     }
 
@@ -413,7 +411,7 @@ app.post('/api/user/profile', async (req, res) => {
             const rpcResponse = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/update_user_profile`, {
                 p_username: username,
                 p_nickname: finalNickname || null,
-                p_avatar_url: avatar_data || avatarUrl || null
+                p_avatar_url: avatarUrl || null
             }, {
                 headers: supabaseHeaders(),
                 timeout: 5000
@@ -456,7 +454,7 @@ app.post('/api/user/profile', async (req, res) => {
         success: true,
         message: 'Profilo salvato con successo!',
         nickname: finalProfile.nickname || finalNickname,
-        avatar_url: avatar_data || finalProfile.avatar_url || avatarUrl || undefined
+        avatar_url: avatarUrl || finalProfile.avatar_url || undefined
     });
 });
 
