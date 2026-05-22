@@ -19,3 +19,4 @@
 - [x] Salvatagio username e foto profilo su DB
 - [] Bug su salvataggio/aggiornamento nickname in pagina gestione account
 - [] Aggiungere campo email x user e la mail di reminder la deve prendere da DB e non da chiedere all'utente.
+- [] Risolvere bug invio mail reminder uscita film
