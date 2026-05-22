@@ -575,15 +575,26 @@ window.handleSaveMovie = async function(event, id, title, posterUrl) {
             updateMovieSaveButtons(id, false);
         }
     } else {
-        // Richiedi email se non presente in localStorage
-        let email = localStorage.getItem('stoike_email_' + user);
-        if (!email) {
-            email = await promptEmailModal();
-            if (!email) {
-                // L'utente ha annullato l'operazione
-                return;
+        // Recupera l'email dal profilo utente nel DB (non chiede più via modal)
+        let email = null;
+        try {
+            const profileRes = await fetch(`/api/user/profile?username=${encodeURIComponent(user)}&_t=${Date.now()}`);
+            const profileData = await profileRes.json();
+            if (profileData && profileData.success && profileData.email) {
+                email = profileData.email;
             }
-            localStorage.setItem('stoike_email_' + user, email);
+        } catch (e) {
+            console.warn('Impossibile recuperare email dal profilo:', e);
+        }
+
+        // Fallback: prova da localStorage (per retrocompatibilità)
+        if (!email) {
+            email = localStorage.getItem('stoike_email_' + user);
+        }
+
+        // Se non c'è email da nessuna parte, avvisa l'utente
+        if (!email) {
+            showStoikeToast("Per ricevere avvisi email devi impostare la tua email nelle impostazioni del profilo. Il promemoria verrà salvato ma senza notifica email.", 'warning');
         }
 
         // Tenta il salvataggio nel database tramite backend
@@ -597,7 +608,7 @@ window.handleSaveMovie = async function(event, id, title, posterUrl) {
                     tmdb_movie_id: id,
                     title: title,
                     poster_url: posterUrl,
-                    email: email
+                    email: email || undefined
                 })
             });
             
@@ -749,7 +760,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const response = await fetch(currentAuthMode === 'login' ? '/api/auth/login' : '/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username: u, password: p })
+                    body: JSON.stringify({ username: u, password: p, email: emailVal || undefined })
                 });
                 const data = await response.json();
                 if (data && data.success) {

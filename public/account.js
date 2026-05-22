@@ -6,6 +6,7 @@
 let originalProfile = {
     username: '',
     nickname: '',
+    email: '',
     avatar_url: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3',
 };
 
@@ -37,6 +38,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (nicknameInput && cachedNickname) {
         nicknameInput.value = cachedNickname;
         originalProfile.nickname = cachedNickname;
+    }
+
+    const cachedEmail = localStorage.getItem('stoike_email_' + username) || localStorage.getItem('stoike_email');
+    const emailInput = document.getElementById('profile-email');
+    if (emailInput && cachedEmail) {
+        emailInput.value = cachedEmail;
+        originalProfile.email = cachedEmail;
     }
     
     const avatarPreview = document.getElementById('profile-avatar-preview');
@@ -71,10 +79,15 @@ async function loadUserProfile(username) {
         if (data && data.success) {
             const nickname = data.nickname || '';
             const avatarUrl = data.avatar_url || originalProfile.avatar_url;
+            const email = data.email || '';
 
             // Aggiorna input Nickname
             const nicknameInput = document.getElementById('profile-nickname');
             if (nicknameInput) nicknameInput.value = nickname;
+
+            // Aggiorna input Email
+            const emailInput = document.getElementById('profile-email');
+            if (emailInput) emailInput.value = email;
 
             // Aggiorna preview avatar
             const avatarPreview = document.getElementById('profile-avatar-preview');
@@ -87,10 +100,14 @@ async function loadUserProfile(username) {
             // Salva lo stato originario per il tasto Annulla
             originalProfile.nickname = nickname;
             originalProfile.avatar_url = avatarUrl;
+            originalProfile.email = email;
 
             // Aggiorna cache locale
             localStorage.setItem('stoike_nickname', nickname);
             localStorage.setItem('stoike_avatar', avatarUrl);
+            if (email) {
+                localStorage.setItem('stoike_email_' + username, email);
+            }
         }
     } catch (err) {
         console.error("Errore nel caricamento del profilo utente:", err);
@@ -137,6 +154,8 @@ async function handleProfileSave(event) {
 
     const nicknameInput = document.getElementById('profile-nickname');
     const nickname = nicknameInput ? nicknameInput.value.trim() : '';
+    const emailInput = document.getElementById('profile-email');
+    const email = emailInput ? emailInput.value.trim() : '';
     const username = originalProfile.username;
 
     if (!nickname) {
@@ -163,7 +182,8 @@ async function handleProfileSave(event) {
             body: JSON.stringify({
                 username: username,
                 nickname: nickname,
-                avatar_data: uploadedAvatarBase64
+                avatar_data: uploadedAvatarBase64,
+                email: email
             })
         });
 
@@ -176,6 +196,10 @@ async function handleProfileSave(event) {
             // Aggiorna l'input nickname visualizzato
             if (nicknameInput) nicknameInput.value = data.nickname;
             originalProfile.nickname = data.nickname;
+            if (data.email !== undefined) {
+                originalProfile.email = data.email;
+                localStorage.setItem('stoike_email_' + username, data.email || '');
+            }
             if (data.avatar_url) {
                 originalProfile.avatar_url = data.avatar_url;
             }
@@ -217,6 +241,12 @@ function resetForm() {
     const nicknameInput = document.getElementById('profile-nickname');
     if (nicknameInput) {
         nicknameInput.value = originalProfile.nickname;
+    }
+
+    // Ripristina input email
+    const emailInput = document.getElementById('profile-email');
+    if (emailInput) {
+        emailInput.value = originalProfile.email;
     }
 
     // Ripristina preview avatar
@@ -388,6 +418,27 @@ function extendI18nTranslations() {
             fr: 'Votre nom public visible dans les forums et les critiques. Doit être unique.',
             es: 'Tu nombre público visible en foros y reseñas. Debe ser único.',
             de: 'Dein öffentlicher Name in Foren und Bewertungen. Muss einzigartig sein.'
+        },
+        'account.email': {
+            it: 'Email',
+            en: 'Email',
+            fr: 'Email',
+            es: 'Correo electrónico',
+            de: 'E-Mail'
+        },
+        'account.emailPlaceholder': {
+            it: 'Es. mario@example.com',
+            en: 'e.g. mario@example.com',
+            fr: 'Ex. mario@example.com',
+            es: 'Ej. mario@example.com',
+            de: 'z.B. mario@example.com'
+        },
+        'account.emailSpecs': {
+            it: 'Utilizzata per i promemoria di uscita dei film. Non verrà condivisa pubblicamente.',
+            en: 'Used for movie release reminders. Will not be shared publicly.',
+            fr: 'Utilisée pour les rappels de sortie de films. Ne sera pas partagée publiquement.',
+            es: 'Utilizada para recordatorios de estrenos de películas. No se compartirá públicamente.',
+            de: 'Wird für Film-Erinnerungen verwendet. Wird nicht öffentlich geteilt.'
         },
         'account.save': {
             it: 'Salva',

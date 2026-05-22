@@ -169,13 +169,14 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 app.post('/api/auth/register', async (req, res) => {
-    const { username, password } = req.body || {};
-    console.log(`🔑 [Auth Register] Richiesta registrazione per: '${username}'`);
+    const { username, password, email } = req.body || {};
+    console.log(`🔑 [Auth Register] Richiesta registrazione per: '${username}' (email: ${email || 'non fornita'})`);
 
     try {
         const response = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/register_user`, {
             p_username: username,
-            p_password: password
+            p_password: password,
+            p_email: email || null
         }, {
             headers: supabaseHeaders(),
             timeout: 10000
@@ -265,7 +266,8 @@ app.get('/api/user/profile', async (req, res) => {
                     username: user.username,
                     role: user.role || 'user',
                     nickname: user.nickname || localUser.nickname || '',
-                    avatar_url: user.avatar_url || localUser.avatar_url || ''
+                    avatar_url: user.avatar_url || localUser.avatar_url || '',
+                    email: user.email || localUser.email || ''
                 });
             }
         } catch (rpcError) {
@@ -276,7 +278,7 @@ app.get('/api/user/profile', async (req, res) => {
         const response = await axios.get(`${SUPABASE_URL}/rest/v1/users`, {
             params: {
                 username: `eq.${username}`,
-                select: 'username,role,nickname,avatar_url'
+                select: 'username,role,nickname,avatar_url,email'
             },
             headers: supabaseHeaders(),
             timeout: 10000
@@ -291,7 +293,8 @@ app.get('/api/user/profile', async (req, res) => {
                 username: user.username,
                 role: user.role,
                 nickname: user.nickname || localUser.nickname || '',
-                avatar_url: user.avatar_url || localUser.avatar_url || ''
+                avatar_url: user.avatar_url || localUser.avatar_url || '',
+                email: user.email || localUser.email || ''
             });
         } else {
             console.log(`👤 [Profile Get] Utente '${username}' non trovato in Supabase. Fallback locale.`);
@@ -302,7 +305,8 @@ app.get('/api/user/profile', async (req, res) => {
                 username: username,
                 role: 'user',
                 nickname: localUser.nickname || '',
-                avatar_url: localUser.avatar_url || ''
+                avatar_url: localUser.avatar_url || '',
+                email: localUser.email || ''
             });
         }
 
@@ -317,14 +321,15 @@ app.get('/api/user/profile', async (req, res) => {
             username: username,
             role: 'user',
             nickname: localUser.nickname || '',
-            avatar_url: localUser.avatar_url || ''
+            avatar_url: localUser.avatar_url || '',
+            email: localUser.email || ''
         });
     }
 });
 
 // POST: Salva / Aggiorna profilo utente
 app.post('/api/user/profile', async (req, res) => {
-    const { username, nickname, avatar_data } = req.body || {};
+    const { username, nickname, avatar_data, email } = req.body || {};
     console.log(`👤 [Profile Update] Richiesta aggiornamento profilo per: '${username}', nickname: '${nickname}'`);
 
     if (!username) {
@@ -397,11 +402,14 @@ app.post('/api/user/profile', async (req, res) => {
     if (avatarUrl) {
         updateDataDB.avatar_url = avatarUrl;
     }
+    const finalEmail = (email !== undefined && email !== null) ? email.trim() : undefined;
+    if (finalEmail !== undefined) updateDataDB.email = finalEmail;
 
     // Per il file JSON locale salviamo solo il percorso relativo per non appesantirlo
     const updateDataLocal = {};
     if (finalNickname !== undefined) updateDataLocal.nickname = finalNickname;
     if (avatarUrl) updateDataLocal.avatar_url = avatarUrl;
+    if (finalEmail !== undefined) updateDataLocal.email = finalEmail;
 
     try {
         let savedInSupabase = false;
@@ -411,7 +419,8 @@ app.post('/api/user/profile', async (req, res) => {
             const rpcResponse = await axios.post(`${SUPABASE_URL}/rest/v1/rpc/update_user_profile`, {
                 p_username: username,
                 p_nickname: finalNickname || null,
-                p_avatar_url: avatarUrl || null
+                p_avatar_url: avatarUrl || null,
+                p_email: finalEmail !== undefined ? finalEmail : null
             }, {
                 headers: supabaseHeaders(),
                 timeout: 5000
@@ -454,7 +463,8 @@ app.post('/api/user/profile', async (req, res) => {
         success: true,
         message: 'Profilo salvato con successo!',
         nickname: finalProfile.nickname || finalNickname,
-        avatar_url: avatarUrl || finalProfile.avatar_url || undefined
+        avatar_url: avatarUrl || finalProfile.avatar_url || undefined,
+        email: finalProfile.email || finalEmail || undefined
     });
 });
 
@@ -884,6 +894,39 @@ app.post('/api/reminders', async (req, res) => {
         return res.status(400).json({ success: false, message: 'Dati incompleti.' });
     }
 
+    // Recupera l'email dal profilo utente nel DB (priorità rispetto a quella fornita dal client)
+    let finalEmail = email || null;
+    try {
+        const userProfileRes = await axios.get(`${SUPABASE_URL}/rest/v1/users`, {
+            params: {
+                username: `eq.${username}`,
+                select: 'email'
+            },
+            headers: supabaseHeaders(),
+            timeout: 5000
+        });
+        if (userProfileRes.data && userProfileRes.data.length > 0 && userProfileRes.data[0].email) {
+            finalEmail = userProfileRes.data[0].email;
+            console.log(`📅 [Reminder Insert] Email recuperata dal profilo DB per '${username}': ${finalEmail}`);
+        }
+    } catch (profileErr) {
+        console.warn(`⚠️ [Reminder Insert] Impossibile recuperare email dal profilo DB per '${username}':`, profileErr.message);
+    }
+
+    // Fallback: se non c'è email valida, prova dal profilo locale
+    if (!finalEmail) {
+        const localUser = getLocalProfileCaseInsensitive(username);
+        if (localUser && localUser.email) {
+            finalEmail = localUser.email;
+            console.log(`📅 [Reminder Insert] Email recuperata dal profilo locale per '${username}': ${finalEmail}`);
+        }
+    }
+
+    if (!finalEmail) {
+        finalEmail = `${username}@stoike.cinema`;
+        console.warn(`⚠️ [Reminder Insert] Nessuna email trovata per '${username}'. Utilizzo placeholder: ${finalEmail}`);
+    }
+
     let finalTitle = title;
     let finalPosterUrl = poster_url;
     let finalReleaseDate = release_date;
@@ -926,7 +969,7 @@ app.post('/api/reminders', async (req, res) => {
                 title: finalTitle,
                 poster_url: finalPosterUrl || null,
                 release_date: finalReleaseDate || null,
-                email: email || `${username}@stoike.cinema`,
+                email: finalEmail,
                 notified: false
             }, {
                 headers: supabaseHeaders(),
@@ -946,7 +989,7 @@ app.post('/api/reminders', async (req, res) => {
                     title: finalTitle,
                     poster_url: finalPosterUrl || null,
                     release_date: finalReleaseDate || null,
-                    email: email || `${username}@stoike.cinema`
+                    email: finalEmail
                 }, {
                     headers: supabaseHeaders(),
                     timeout: 10000
@@ -1316,10 +1359,36 @@ app.post('/api/webhook/github', express.raw({ type: 'application/json' }), async
 // =========================================================================
 // BACKGROUND WORKER - CONTROLLO AVVISI DI USCITA ED INVIO EMAIL DI NOTIFICA
 // =========================================================================
+
+// File locale per tracciare i promemoria già notificati (fallback se colonna 'notified' assente nel DB)
+const NOTIFIED_TRACKER_PATH = path.join(__dirname, 'notified_reminders.json');
+
+function loadNotifiedTracker() {
+    try {
+        if (fs.existsSync(NOTIFIED_TRACKER_PATH)) {
+            return JSON.parse(fs.readFileSync(NOTIFIED_TRACKER_PATH, 'utf8'));
+        }
+    } catch (e) {
+        console.warn("⚠️ [Release Worker] Impossibile leggere il file di tracking locale:", e.message);
+    }
+    return {};
+}
+
+function saveNotifiedTracker(tracker) {
+    try {
+        fs.writeFileSync(NOTIFIED_TRACKER_PATH, JSON.stringify(tracker, null, 2), 'utf8');
+    } catch (e) {
+        console.error("❌ [Release Worker] Impossibile salvare il file di tracking locale:", e.message);
+    }
+}
+
 async function checkAndSendReleaseNotifications() {
     console.log("⏰ [Release Worker] Avvio controllo promemoria film in uscita...");
     try {
         let reminders = [];
+        let hasNotifiedColumn = true;
+
+        // Tentativo 1: Recupera solo i promemoria non ancora notificati (colonna 'notified' presente)
         try {
             const response = await axios.get(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
                 params: {
@@ -1330,6 +1399,7 @@ async function checkAndSendReleaseNotifications() {
                 timeout: 15000
             });
             reminders = response.data || [];
+            console.log(`⏰ [Release Worker] Recuperati ${reminders.length} promemoria con notified=false dal DB.`);
         } catch (dbErr) {
             const dbErrMsg = dbErr.response && dbErr.response.data && dbErr.response.data.message
                 ? dbErr.response.data.message
@@ -1337,11 +1407,45 @@ async function checkAndSendReleaseNotifications() {
             const isMissingNotified = dbErrMsg.includes("notified") || (dbErr.response && dbErr.response.data && dbErr.response.data.code === 'PGRST204');
             
             if (isMissingNotified) {
-                console.warn("⚠️ [Release Worker] Colonna 'notified' non configurata nel DB Supabase. Impossibile controllare promemoria non notificati.");
-                reminders = [];
+                hasNotifiedColumn = false;
+                console.warn("⚠️ [Release Worker] Colonna 'notified' non trovata nel DB. Fallback: recupero TUTTI i promemoria e uso tracking locale...");
+                
+                // Tentativo 2: Recupera TUTTI i promemoria (senza filtro su notified)
+                try {
+                    const fallbackResponse = await axios.get(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+                        params: {
+                            select: '*'
+                        },
+                        headers: supabaseHeaders(),
+                        timeout: 15000
+                    });
+                    reminders = fallbackResponse.data || [];
+                    console.log(`⏰ [Release Worker] Recuperati ${reminders.length} promemoria totali dal DB (fallback).`);
+                } catch (fallbackErr) {
+                    console.error("❌ [Release Worker] Impossibile recuperare i promemoria dal DB:", fallbackErr.message);
+                    return;
+                }
             } else {
                 throw dbErr;
             }
+        }
+
+        if (reminders.length === 0) {
+            console.log("⏰ [Release Worker] Nessun promemoria presente nel database.");
+            return;
+        }
+
+        // Carica il tracker locale (usato quando la colonna 'notified' non esiste)
+        const localTracker = loadNotifiedTracker();
+
+        // Se non c'è la colonna notified, filtra via i promemoria già tracciati localmente
+        if (!hasNotifiedColumn) {
+            const beforeCount = reminders.length;
+            reminders = reminders.filter(r => {
+                const trackingKey = `${r.username}_${r.tmdb_movie_id}`;
+                return !localTracker[trackingKey];
+            });
+            console.log(`⏰ [Release Worker] Dopo filtro tracking locale: ${reminders.length} da controllare (${beforeCount - reminders.length} già notificati).`);
         }
 
         if (reminders.length === 0) {
@@ -1357,12 +1461,68 @@ async function checkAndSendReleaseNotifications() {
 
         console.log(`⏰ [Release Worker] Data odierna locale: ${todayStr}. Analisi di ${reminders.length} promemoria...`);
 
+        let trackerUpdated = false;
+
         for (const reminder of reminders) {
-            const relDate = reminder.release_date;
+            let relDate = reminder.release_date;
+
+            // Se la release_date è mancante, tenta di recuperarla da TMDb e aggiornare il DB
+            if (!relDate && reminder.tmdb_movie_id) {
+                console.log(`🔍 [Release Worker] release_date mancante per '${reminder.title}' (ID: ${reminder.tmdb_movie_id}). Tentativo recupero da TMDb...`);
+                try {
+                    const tmdbRes = await axios.get(`${TMDB_BASE_URL}/movie/${reminder.tmdb_movie_id}`, {
+                        params: { api_key: TMDB_API_KEY, language: 'it-IT' },
+                        timeout: 5000
+                    });
+                    if (tmdbRes.data && tmdbRes.data.release_date) {
+                        relDate = tmdbRes.data.release_date;
+                        console.log(`✅ [Release Worker] release_date recuperata da TMDb: ${relDate}. Aggiornamento DB...`);
+                        // Aggiorna il record nel DB con la release_date recuperata
+                        try {
+                            await axios.patch(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+                                release_date: relDate
+                            }, {
+                                params: { id: `eq.${reminder.id}` },
+                                headers: supabaseHeaders(),
+                                timeout: 10000
+                            });
+                        } catch (patchDateErr) {
+                            console.warn(`⚠️ [Release Worker] Impossibile aggiornare release_date nel DB per ID ${reminder.id}:`, patchDateErr.message);
+                        }
+                    } else {
+                        console.warn(`⚠️ [Release Worker] TMDb non ha restituito una release_date per ID ${reminder.tmdb_movie_id}. Salto questo promemoria.`);
+                        continue;
+                    }
+                } catch (tmdbErr) {
+                    console.warn(`⚠️ [Release Worker] Impossibile recuperare release_date da TMDb per ID ${reminder.tmdb_movie_id}:`, tmdbErr.message);
+                    continue;
+                }
+            }
+
             if (!relDate) continue;
 
             if (relDate <= todayStr) {
-                console.log(`📧 [Release Worker] Notifica film '${reminder.title}' (Uscita: ${relDate}) per '${reminder.email}'...`);
+                // Controlla che l'email sia valida e non sia un placeholder
+                const email = reminder.email;
+                if (!email || email.endsWith('@stoike.cinema') || email.trim() === '') {
+                    console.warn(`⚠️ [Release Worker] Email non valida o placeholder per '${reminder.title}' (utente: ${reminder.username}, email: ${email}). Salto invio email ma segno come notificato.`);
+                    // Segna come notificato per non ritentare
+                    const trackingKey = `${reminder.username}_${reminder.tmdb_movie_id}`;
+                    localTracker[trackingKey] = { notifiedAt: new Date().toISOString(), skipped: true, reason: 'invalid_email' };
+                    trackerUpdated = true;
+                    if (hasNotifiedColumn) {
+                        try {
+                            await axios.patch(`${SUPABASE_URL}/rest/v1/movie_reminders`, { notified: true }, {
+                                params: { id: `eq.${reminder.id}` },
+                                headers: supabaseHeaders(),
+                                timeout: 10000
+                            });
+                        } catch (e) { /* ignora */ }
+                    }
+                    continue;
+                }
+
+                console.log(`📧 [Release Worker] Notifica film '${reminder.title}' (Uscita: ${relDate}) per '${email}'...`);
 
                 const subject = `[Stoike] È uscito il film: ${reminder.title}!`;
                 const emailHtml = `
@@ -1388,7 +1548,7 @@ async function checkAndSendReleaseNotifications() {
                             
                             <p>Corri su Stoike per consultare le recensioni della community, votarlo o scrivere la tua recensione!</p>
                             
-                            <a href="http://localhost:3000/movie.html?id=${reminder.tmdb_movie_id}" style="display: inline-block; background-color: #ffd700; color: #0b0c10; font-weight: 700; padding: 12px 30px; border-radius: 30px; text-decoration: none; margin-top: 15px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(255,215,0,0.3);">Vedi Dettaglio Film</a>
+                            <a href="http://localhost:${PORT}/movie.html?id=${reminder.tmdb_movie_id}" style="display: inline-block; background-color: #ffd700; color: #0b0c10; font-weight: 700; padding: 12px 30px; border-radius: 30px; text-decoration: none; margin-top: 15px; transition: all 0.3s; box-shadow: 0 4px 15px rgba(255,215,0,0.3);">Vedi Dettaglio Film</a>
                         </div>
                         <div style="text-align: center; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 25px; font-size: 13px; color: rgba(255,255,255,0.4);">
                             <p>Hai ricevuto questa email perché hai attivato un promemoria per l'uscita di questo film su Stoike.</p>
@@ -1410,7 +1570,7 @@ async function checkAndSendReleaseNotifications() {
                     console.log("====================================================================");
                     console.log("✉️  [MOCK EMAIL ALERTS - TERMINAL LOGGING FALLBACK]");
                     console.log(`FROM:    ${smtpFrom}`);
-                    console.log(`TO:      ${reminder.email}`);
+                    console.log(`TO:      ${email}`);
                     console.log(`SUBJECT: ${subject}`);
                     console.log("--------------------------------------------------------------------");
                     console.log(`È uscito il film '${reminder.title}'!`);
@@ -1431,18 +1591,18 @@ async function checkAndSendReleaseNotifications() {
 
                         await transporter.sendMail({
                             from: smtpFrom,
-                            to: reminder.email,
+                            to: email,
                             subject: subject,
                             html: emailHtml
                         });
-                        console.log(`✅ [Release Worker] Notifica email inviata con successo via SMTP a '${reminder.email}'!`);
+                        console.log(`✅ [Release Worker] Notifica email inviata con successo via SMTP a '${email}'!`);
                         emailSent = true;
                     } catch (smtpErr) {
                         console.error(`❌ [Release Worker] Errore invio SMTP:`, smtpErr.message);
                         console.log("====================================================================");
                         console.log("✉️  [FALLBACK - MOCK EMAIL LOGGED TO TERMINAL]");
                         console.log(`FROM:    ${smtpFrom}`);
-                        console.log(`TO:      ${reminder.email}`);
+                        console.log(`TO:      ${email}`);
                         console.log(`SUBJECT: ${subject}`);
                         console.log("====================================================================");
                         emailSent = true;
@@ -1450,22 +1610,35 @@ async function checkAndSendReleaseNotifications() {
                 }
 
                 if (emailSent) {
-                    try {
-                        await axios.patch(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
-                            notified: true
-                        }, {
-                            params: {
-                                id: `eq.${reminder.id}`
-                            },
-                            headers: supabaseHeaders(),
-                            timeout: 10000
-                        });
-                        console.log(`✅ [Release Worker] Stato notified impostato a TRUE per ID ${reminder.id}`);
-                    } catch (patchErr) {
-                        console.error(`❌ [Release Worker] Errore patch notified per ID ${reminder.id}:`, patchErr.message);
+                    // Aggiorna il flag notified nel DB (se la colonna esiste)
+                    if (hasNotifiedColumn) {
+                        try {
+                            await axios.patch(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+                                notified: true
+                            }, {
+                                params: {
+                                    id: `eq.${reminder.id}`
+                                },
+                                headers: supabaseHeaders(),
+                                timeout: 10000
+                            });
+                            console.log(`✅ [Release Worker] Stato notified impostato a TRUE per ID ${reminder.id}`);
+                        } catch (patchErr) {
+                            console.error(`❌ [Release Worker] Errore patch notified per ID ${reminder.id}:`, patchErr.message);
+                        }
                     }
+                    // Salva sempre nel tracker locale (backup e fallback)
+                    const trackingKey = `${reminder.username}_${reminder.tmdb_movie_id}`;
+                    localTracker[trackingKey] = { notifiedAt: new Date().toISOString(), title: reminder.title };
+                    trackerUpdated = true;
                 }
             }
+        }
+
+        // Salva il tracker locale se è stato aggiornato
+        if (trackerUpdated) {
+            saveNotifiedTracker(localTracker);
+            console.log("💾 [Release Worker] Tracker locale aggiornato e salvato.");
         }
     } catch (err) {
         console.error("❌ [Release Worker] ERRORE GENERALE:", err.message);
