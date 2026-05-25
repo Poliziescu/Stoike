@@ -193,16 +193,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // Format YYYY-MM-DD date into standard European Italian format
+    // Format YYYY-MM-DD date into localized format based on current language
     function formatDate(rawDate) {
         if (!rawDate) return '';
         const parts = rawDate.split('-');
         if (parts.length !== 3) return rawDate;
-        const months = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno', 'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
-        const day = parseInt(parts[2], 10);
-        const month = months[parseInt(parts[1], 10) - 1];
-        const year = parts[0];
-        return `${day} ${month} ${year}`;
+        const langMap = { it: 'it-IT', en: 'en-US', fr: 'fr-FR', es: 'es-ES', de: 'de-DE' };
+        const currentLang = (window.i18n && window.i18n.getCurrentLang) ? window.i18n.getCurrentLang() : 'it';
+        const locale = langMap[currentLang] || 'it-IT';
+        try {
+            const date = new Date(parseInt(parts[0]), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            return date.toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' });
+        } catch (e) {
+            return rawDate;
+        }
     }
 
     // Set search event listeners
