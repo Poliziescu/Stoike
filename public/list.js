@@ -180,7 +180,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = await fetchTMDB(pagedEndpoint);
         if (data) {
             totalPages = data.total_pages || 1;
-            return data.results ? data.results.map(m => mapTMDBMovie(m)) : [];
+            let results = data.results || [];
+            
+            // Ordina i film per rating (vote_average) decrescente se siamo in top_rated o collection
+            if (type === 'top_rated' || type === 'collection') {
+                results.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
+            }
+            
+            return results.map(m => mapTMDBMovie(m));
         }
         return [];
     }

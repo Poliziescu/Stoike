@@ -158,6 +158,10 @@
                             <span class="material-symbols-outlined text-[18px]">done_all</span>
                             <span data-i18n="notifications.clearAll">Segna tutte come lette</span>
                         </button>
+                        <button id="delete-read-btn" onclick="deleteReadNotifications()" class="px-5 py-2.5 bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 rounded-full font-label-md transition-colors flex items-center gap-2" title="Elimina le notifiche già lette">
+                            <span class="material-symbols-outlined text-[18px]">delete_sweep</span>
+                            <span data-i18n="notifications.deleteRead">Elimina lette</span>
+                        </button>
                     </div>
                 </div>
 
@@ -457,9 +461,16 @@
                     readIds = JSON.parse(localStorage.getItem(readKey)) || [];
                 } catch(e){}
                 
-                // Filtra le notifiche per tipo 'mention' o 'reminder' (già usciti)
-                // Escludiamo quelle cancellate se necessario, o mostriamo solo quelle non ancora lette come attive, e le lette in opaco
-                if (allNotifs.length === 0) {
+                // Escludiamo le notifiche eliminate dal client
+                const deletedKey = `stoike_deleted_notifications_${user}`;
+                let deletedIds = [];
+                try {
+                    deletedIds = JSON.parse(localStorage.getItem(deletedKey)) || [];
+                } catch(e){}
+                
+                const visibleNotifs = allNotifs.filter(n => !deletedIds.includes(n.id));
+                
+                if (visibleNotifs.length === 0) {
                     container.innerHTML = `
                         <div class="py-12 text-center text-on-surface-variant flex flex-col items-center gap-3">
                             <span class="material-symbols-outlined text-[36px] opacity-40">notifications_off</span>
@@ -470,7 +481,7 @@
                 }
 
                 // Calcoliamo quante sono non lette
-                const unreadNotifs = allNotifs.filter(n => !readIds.includes(n.id));
+                const unreadNotifs = visibleNotifs.filter(n => !readIds.includes(n.id));
                 if (unreadNotifs.length > 0) {
                     countBadge.innerText = unreadNotifs.length;
                     countBadge.classList.remove('hidden');
@@ -479,7 +490,7 @@
                 }
 
                 container.innerHTML = '';
-                allNotifs.forEach(notif => {
+                visibleNotifs.forEach(notif => {
                     const isRead = readIds.includes(notif.id);
                     const notifCard = document.createElement('div');
                     notifCard.id = `notif-card-${notif.id}`;
@@ -565,6 +576,41 @@
                     loadForumMentions();
                 })
                 .catch(e => console.error(e));
+        };
+
+        window.deleteReadNotifications = function() {
+            const user = localStorage.getItem('stoike_user');
+            if (!user) return;
+            
+            const readKey = `stoike_read_notifications_${user}`;
+            const deletedKey = `stoike_deleted_notifications_${user}`;
+            
+            let readIds = [];
+            try {
+                readIds = JSON.parse(localStorage.getItem(readKey)) || [];
+            } catch(e){}
+            
+            if (readIds.length === 0) {
+                showStoikeToast("Non ci sono notifiche lette da eliminare.", "info");
+                return;
+            }
+            
+            let deletedIds = [];
+            try {
+                deletedIds = JSON.parse(localStorage.getItem(deletedKey)) || [];
+            } catch(e){}
+            
+            // Aggiungiamo tutti i readIds a deletedIds senza duplicati
+            readIds.forEach(id => {
+                if (!deletedIds.includes(id)) {
+                    deletedIds.push(id);
+                }
+            });
+            
+            localStorage.setItem(deletedKey, JSON.stringify(deletedIds));
+            showStoikeToast("Notifiche lette eliminate con successo.", "success");
+            
+            loadForumMentions();
         };
     </script>
 </body>

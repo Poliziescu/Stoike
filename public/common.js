@@ -1046,7 +1046,12 @@ async function updateNotificationsCount() {
             try {
                 readIds = JSON.parse(localStorage.getItem(readKey)) || [];
             } catch(e){}
-            const unread = notifs.filter(n => !readIds.includes(n.id)).length;
+            const deletedKey = `stoike_deleted_notifications_${user}`;
+            let deletedIds = [];
+            try {
+                deletedIds = JSON.parse(localStorage.getItem(deletedKey)) || [];
+            } catch(e){}
+            const unread = notifs.filter(n => !readIds.includes(n.id) && !deletedIds.includes(n.id)).length;
             badges.forEach(b => {
                 if (unread > 0) {
                     b.innerText = unread;

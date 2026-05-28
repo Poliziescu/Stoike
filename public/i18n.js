@@ -141,6 +141,7 @@ const translations = {
     'notifications.mentionsSection':      { it: 'Menzioni nel Forum', en: 'Forum Mentions', fr: 'Mentions dans le Forum', es: 'Menciones en el Foro', de: 'Erwähnungen im Forum' },
     'notifications.noNotifications':      { it: 'Nessuna nuova notifica.', en: 'No new notifications.', fr: 'Aucune nouvelle notification.', es: 'No hay nuevas notificaciones.', de: 'Keine neuen Benachrichtigungen.' },
     'notifications.clearAll':             { it: 'Segna tutte come lette', en: 'Mark all as read', fr: 'Tout marquer comme lu', es: 'Marcar todas como leídas', de: 'Alle als gelesen markieren' },
+    'notifications.deleteRead':           { it: 'Elimina lette', en: 'Delete read', fr: 'Supprimer lues', es: 'Eliminar leídas', de: 'Gelesene löschen' },
     'notifications.daysToGo':             { it: 'giorni all\'uscita', en: 'days to release', fr: 'jours avant la sortie', es: 'días para el estreno', de: 'Tage bis zur Veröffentlichung' },
     'notifications.releasedToday':        { it: 'Uscito oggi!', en: 'Released today!', fr: 'Sorti aujourd\'hui !', es: '¡Estrenado hoy!', de: 'Heute veröffentlicht!' },
     'notifications.released':             { it: 'Già uscito', en: 'Already released', fr: 'Déjà sorti', es: 'Ya estrenado', de: 'Bereits veröffentlicht' },

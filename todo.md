@@ -20,3 +20,5 @@
 - [] Bug su salvataggio/aggiornamento nickname in pagina gestione account
 - [x] Aggiungere campo email x user e la mail di reminder la deve prendere da DB e non da chiedere all'utente.
 - [x] Risolvere bug invio mail reminder uscita film
+- [x] Implementare tasto elimina notifiche già lette in pagina notifiche.
+- [x] Sistemare bug ordinamento film con rating maggiore
