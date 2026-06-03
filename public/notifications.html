@@ -321,14 +321,14 @@
             for (const movie of saved) {
                 const id = movie.tmdb_movie_id || movie.id;
                 const title = movie.title || movie.movie_title;
-                const posterUrl = movie.poster_url || 'https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover';
+                const posterUrl = movie.poster_url || 'https://placehold.co/150x225/131313/FFFFFF?text=No+Cover';
                 
                 const card = document.createElement('div');
                 card.id = `reminder-card-${id}`;
                 card.className = "flex gap-4 bg-surface-container-high/40 hover:bg-surface-container-high/60 border border-outline-variant/10 rounded-xl overflow-hidden p-3 relative hover:border-primary-container/30 transition-all duration-300 group";
                 
                 card.innerHTML = `
-                    <img src="${posterUrl}" class="w-16 h-24 object-cover rounded shadow cursor-pointer group-hover:scale-105 transition-transform duration-300" onclick="window.location.href='/movie.html?id=${id}'" onerror="this.src='https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover'" />
+                    <img src="${posterUrl}" class="w-16 h-24 object-cover rounded shadow cursor-pointer group-hover:scale-105 transition-transform duration-300" onclick="window.location.href='/movie.html?id=${id}'" onerror="this.src='https://placehold.co/150x225/131313/FFFFFF?text=No+Cover'" />
                     <div class="flex-1 flex flex-col min-w-0">
                         <h3 class="font-title-sm text-white font-bold truncate cursor-pointer hover:text-primary-container transition-colors" onclick="window.location.href='/movie.html?id=${id}'">${title}</h3>
                         <p class="text-on-surface-variant font-label-sm mt-1" id="release-info-${id}">Calcolo giorni...</p>

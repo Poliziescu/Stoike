@@ -86,8 +86,8 @@ async function loadMovieDetails(movieId) {
             genre: movie.genres ? movie.genres.map(g => g.name).join(', ') : '',
             rating: movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A',
             release_year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A',
-            poster_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover',
-            backdrop_url: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : 'https://via.placeholder.com/1280x720/131313/FFFFFF?text=No+Backdrop',
+            poster_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/500x750/131313/FFFFFF?text=No+Cover',
+            backdrop_url: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : 'https://placehold.co/1280x720/131313/FFFFFF?text=No+Backdrop',
             synopsis: movie.overview || ''
         };
 
@@ -123,21 +123,21 @@ async function loadMovieDetails(movieId) {
         const castContainer = document.getElementById('detail-cast-container');
         const castEl = document.getElementById('detail-cast');
         if (credits && credits.cast && credits.cast.length > 0) {
-            castEl.innerHTML = '';
-            const sliceLimit = Math.min(credits.cast.length, 8);
-            credits.cast.slice(0, sliceLimit).forEach((c, idx) => {
-                const span = document.createElement('span');
-                span.className = 'text-primary-container hover:underline cursor-pointer transition-all duration-200 font-medium';
-                span.innerText = c.name;
-                span.addEventListener('click', () => {
-                    window.location.href = `/actors.html?query=${encodeURIComponent(c.name)}`;
-                });
-                castEl.appendChild(span);
-                
-                if (idx < sliceLimit - 1) {
-                    castEl.appendChild(document.createTextNode(', '));
-                }
+            let castHTML = '<div class="flex flex-wrap gap-3 mt-3">';
+            const sliceLimit = Math.min(credits.cast.length, 6);
+            credits.cast.slice(0, sliceLimit).forEach(actor => {
+                const photoUrl = actor.profile_path 
+                    ? `https://image.tmdb.org/t/p/w185${actor.profile_path}` 
+                    : `https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=2d2d2d&color=fff`;
+                castHTML += `
+                    <div onclick="window.location.href='/actors.html?query=${encodeURIComponent(actor.name)}'" class="flex items-center gap-3 bg-surface-container-high border border-outline-variant/20 pr-4 rounded-full overflow-hidden hover:bg-surface-container-highest hover:border-primary-container/30 transition-all duration-300 cursor-pointer transform hover:scale-105 shadow-sm">
+                        <img src="${photoUrl}" alt="${actor.name}" class="w-12 h-12 object-cover" onerror="this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(actor.name)}&background=2d2d2d&color=fff'" />
+                        <span class="font-label-md text-label-md text-white font-medium">${actor.name}</span>
+                    </div>
+                `;
             });
+            castHTML += '</div>';
+            castEl.innerHTML = castHTML;
             castContainer.classList.remove('hidden');
         } else {
             castContainer.classList.add('hidden');

@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         release_year: data.release_date ? data.release_date.substring(0, 4) : 'N/A',
                         poster_url: data.poster_path
                             ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
-                            : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover',
+                            : 'https://placehold.co/500x750/131313/FFFFFF?text=No+Cover',
                         backdrop_url: data.backdrop_path
                             ? `https://image.tmdb.org/t/p/w1280${data.backdrop_path}`
                             : '',

@@ -39,9 +39,112 @@ document.addEventListener('DOMContentLoaded', async () => {
     let filmographyCurrentBatch = 0;
     const batchSize = 24;
 
+    // Spelling Correction helper for actor search
+    function getCorrectedActorName(query) {
+        if (!query) return query;
+        
+        const famousActors = [
+            "Mark Wahlberg", "Arnold Schwarzenegger", "Scarlett Johansson", "Keanu Reeves", 
+            "Benedict Cumberbatch", "Leonardo DiCaprio", "Matthew McConaughey", "Jason Statham", 
+            "Sylvester Stallone", "Christian Bale", "Cillian Murphy", "Robert Downey Jr.", 
+            "Tom Cruise", "Will Smith", "Brad Pitt", "Johnny Depp", "Angelina Jolie", 
+            "Natalie Portman", "Anne Hathaway", "Jennifer Lawrence", "Sandra Bullock", 
+            "Meryl Streep", "Harrison Ford", "Morgan Freeman", "Samuel L. Jackson", 
+            "Al Pacino", "Robert De Niro", "Clint Eastwood", "Jack Nicholson", "Dustin Hoffman", 
+            "Tom Hanks", "Anthony Hopkins", "Liam Neeson", "Bruce Willis", "Dwayne Johnson", 
+            "Vin Diesel", "Paul Walker", "Hugh Jackman", "Ryan Reynolds", "Chris Hemsworth", 
+            "Chris Evans", "Chris Pratt", "Robert Pattinson", "Kristen Stewart", "Daniel Radcliffe", 
+            "Emma Watson", "Rupert Grint", "Tom Holland", "Zendaya", "Timothée Chalamet", 
+            "Margot Robbie", "Ryan Gosling", "Emma Stone", "Joaquin Phoenix", "Heath Ledger", 
+            "Gary Oldman", "Tom Hardy", "Joseph Gordon-Levitt", "Marion Cotillard", "Elliot Page", 
+            "Kate Winslet", "Orlando Bloom", "Keira Knightley", "Geoffrey Rush", "Penélope Cruz", 
+            "Javier Bardem", "Antonio Banderas", "Salma Hayek", "Jennifer Aniston", "George Clooney", 
+            "Matt Damon", "Ben Affleck", "Robin Williams", "Jim Carrey", "Adam Sandler", 
+            "Will Ferrell", "Steve Carell", "Jonah Hill", "Seth Rogen", "James Franco", 
+            "Channing Tatum", "Bradley Cooper", "Lady Gaga", "Zach Galifianakis", "Ed Helms", 
+            "Gwyneth Paltrow", "Jeremy Renner", "Mark Ruffalo", "Tom Hiddleston", "Idris Elba", 
+            "Sebastian Stan", "Anthony Mackie", "Elizabeth Olsen", "Paul Rudd", "Evangeline Lilly", 
+            "Michael Douglas", "Michael Peña", "Mads Mikkelsen", "Tilda Swinton", "Michael Keaton", 
+            "Jake Gyllenhaal", "Russell Crowe", "Denzel Washington", "Jamie Foxx", "Christoph Waltz", 
+            "Gal Gadot", "Chris Pine", "Robin Wright", "Henry Cavill", "Amy Adams", 
+            "Jesse Eisenberg", "Jeremy Irons", "Jason Momoa", "Ezra Miller", "Nicole Kidman", 
+            "Brie Larson", "Jude Law", "Annette Bening", "Tessa Thompson", "Daniel Kaluuya", 
+            "Florence Pugh", "Pedro Pascal", "Kristen Wiig", "Patrick Wilson", "Dolph Lundgren", 
+            "Yahya Abdul-Mateen II", "Willem Dafoe", "J.K. Simmons"
+        ];
+
+        const normalize = (str) => {
+            return str.toLowerCase()
+                .replace(/[^a-z]/g, '')
+                .replace(/h/g, '')
+                .replace(/(.)\1+/g, '$1');
+        };
+
+        const normalizedQuery = normalize(query);
+        if (!normalizedQuery) return query;
+
+        // Try exact normalized match first
+        for (const actor of famousActors) {
+            if (normalize(actor) === normalizedQuery) {
+                return actor;
+            }
+        }
+
+        // Try Levenshtein distance match next
+        let bestMatch = null;
+        let minDistance = 999;
+        
+        const getLevenshteinDistance = (a, b) => {
+            const matrix = [];
+            for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+            for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+            for (let i = 1; i <= b.length; i++) {
+                for (let j = 1; j <= a.length; j++) {
+                    if (b.charAt(i - 1) === a.charAt(j - 1)) {
+                        matrix[i][j] = matrix[i - 1][j - 1];
+                    } else {
+                        matrix[i][j] = Math.min(
+                            matrix[i - 1][j - 1] + 1,
+                            Math.min(
+                                matrix[i][j - 1] + 1,
+                                matrix[i - 1][j] + 1
+                            )
+                        );
+                    }
+                }
+            }
+            return matrix[b.length][a.length];
+        };
+
+        for (const actor of famousActors) {
+            const normalizedActor = normalize(actor);
+            const dist = getLevenshteinDistance(normalizedQuery, normalizedActor);
+            const maxAllowedDist = Math.max(1, Math.floor(normalizedActor.length * 0.25));
+            
+            if (dist <= maxAllowedDist && dist < minDistance) {
+                minDistance = dist;
+                bestMatch = actor;
+            }
+        }
+
+        if (bestMatch && minDistance <= 3) {
+            return bestMatch;
+        }
+
+        return query;
+    }
+
     // Execute the search pipeline
     async function executeActorSearch(query) {
         if (!query) return;
+
+        const correctedQuery = getCorrectedActorName(query);
+        if (correctedQuery !== query) {
+            if (searchInput) searchInput.value = correctedQuery;
+            if (window.showStoikeToast) {
+                window.showStoikeToast(`Ricerca corretta in: ${correctedQuery}`, 'info');
+            }
+        }
 
         // Reset UI states
         profileCard.classList.add('hidden');
@@ -52,7 +155,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         try {
             // Step 1: Search for person matching the query
-            const searchData = await fetchTMDB(`/search/person?query=${encodeURIComponent(query)}`);
+            const searchData = await fetchTMDB(`/search/person?query=${encodeURIComponent(correctedQuery)}`);
             
             if (!searchData || !searchData.results || searchData.results.length === 0) {
                 loadingEl.classList.add('hidden');
@@ -60,8 +163,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Take the first match
-            const bestMatch = searchData.results[0];
+            // Prioritizza i risultati che contengono una foto profilo e poi ordina per popolarità
+            const sortedResults = searchData.results.sort((a, b) => {
+                const aHasPhoto = a.profile_path ? 1 : 0;
+                const bHasPhoto = b.profile_path ? 1 : 0;
+                if (aHasPhoto !== bHasPhoto) {
+                    return bHasPhoto - aHasPhoto;
+                }
+                return (b.popularity || 0) - (a.popularity || 0);
+            });
+
+            // Prendi il miglior match ordinato
+            const bestMatch = sortedResults[0];
             await loadActorDetails(bestMatch.id);
 
         } catch (err) {
@@ -94,7 +207,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Picture profile path with backup placeholder
             actorPhoto.src = profile.profile_path 
                 ? `https://image.tmdb.org/t/p/w500${profile.profile_path}` 
-                : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Photo';
+                : 'https://placehold.co/500x750/131313/FFFFFF?text=No+Photo';
             actorPhoto.alt = profile.name;
 
             // Birthday and birthplace
@@ -228,7 +341,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     function renderActorCard(person) {
         const photoUrl = person.profile_path
             ? `https://image.tmdb.org/t/p/w500${person.profile_path}`
-            : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Photo';
+            : 'https://placehold.co/500x750/131313/FFFFFF?text=No+Photo';
         const knownFor = person.known_for && person.known_for.length > 0
             ? person.known_for.map(k => k.title || k.name || '').filter(Boolean).slice(0, 2).join(', ')
             : person.known_for_department || '';
@@ -236,7 +349,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             <div class="movie-card group flex flex-col bg-surface-container/30 border border-outline-variant/10 rounded-2xl overflow-hidden hover:border-primary-container/30 hover:bg-surface-container/50 hover:shadow-2xl hover:shadow-primary-container/5 transition-all duration-500 cursor-pointer" onclick="document.getElementById('actor-search-input').value='${person.name.replace(/'/g, "\\'")}';
                 document.getElementById('actor-search-btn').click();">
                 <div class="relative aspect-[2/3] overflow-hidden">
-                    <img src="${photoUrl}" alt="${person.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy" onerror="this.src='https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Photo'" />
+                    <img src="${photoUrl}" alt="${person.name}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy" onerror="this.src='https://placehold.co/500x750/131313/FFFFFF?text=No+Photo'" />
                     <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-4">
                         <span class="text-primary-container font-label-sm text-center">${i18n.t('actors.viewDetails')}</span>
                     </div>
