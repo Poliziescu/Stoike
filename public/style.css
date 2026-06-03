@@ -16,3 +16,10 @@ body {
 .material-fill-1 {
     font-variation-settings: 'FILL' 1;
 }
+
+#search-container > div.relative:first-child {
+    z-index: 20;
+}
+#search-container > div.relative:last-child {
+    z-index: 10;
+}

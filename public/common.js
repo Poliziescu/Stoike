@@ -38,8 +38,8 @@ function mapTMDBMovie(m) {
         genre: m.genre_ids ? m.genre_ids.map(id => tmdbGenres[id] || '').filter(Boolean).join(', ') : '',
         rating: m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
         release_year: m.release_date ? m.release_date.substring(0, 4) : 'N/A',
-        poster_url: m.poster_path ? (m.poster_path.startsWith('http') ? m.poster_path : `https://image.tmdb.org/t/p/w500${m.poster_path}`) : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover',
-        backdrop_url: m.backdrop_path ? (m.backdrop_path.startsWith('http') ? m.backdrop_path : `https://image.tmdb.org/t/p/w1280${m.backdrop_path}`) : 'https://via.placeholder.com/1280x720/131313/FFFFFF?text=No+Backdrop',
+        poster_url: m.poster_path ? (m.poster_path.startsWith('http') ? m.poster_path : `https://image.tmdb.org/t/p/w500${m.poster_path}`) : 'https://placehold.co/500x750/131313/FFFFFF?text=No+Cover',
+        backdrop_url: m.backdrop_path ? (m.backdrop_path.startsWith('http') ? m.backdrop_path : `https://image.tmdb.org/t/p/w1280${m.backdrop_path}`) : 'https://placehold.co/1280x720/131313/FFFFFF?text=No+Backdrop',
         synopsis: m.overview || ''
     };
 }
@@ -360,7 +360,7 @@ async function fetchSuggestionsGlobal() {
             const movie = mapTMDBMovie(m);
             const item = document.createElement('div');
             item.className = 'flex items-center gap-3 p-3 hover:bg-surface-container-high cursor-pointer transition-colors border-b border-outline-variant/10 last:border-0';
-            item.innerHTML = `<img src="${movie.poster_url}" class="w-10 h-14 object-cover rounded shadow-sm" alt="${movie.title}" onerror="this.src='https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover'"><div class="flex-1 min-w-0"><div class="font-label-md text-white truncate">${movie.title}</div><div class="font-label-sm text-on-surface-variant">${movie.release_year} • <span class="material-symbols-outlined text-[12px] material-fill-1 text-primary-container align-middle">star</span> ${movie.rating}</div></div>`;
+            item.innerHTML = `<img src="${movie.poster_url}" class="w-10 h-14 object-cover rounded shadow-sm" alt="${movie.title}" onerror="this.src='https://placehold.co/150x225/131313/FFFFFF?text=No+Cover'"><div class="flex-1 min-w-0"><div class="font-label-md text-white truncate">${movie.title}</div><div class="font-label-sm text-on-surface-variant">${movie.release_year} • <span class="material-symbols-outlined text-[12px] material-fill-1 text-primary-container align-middle">star</span> ${movie.rating}</div></div>`;
             item.addEventListener('click', () => {
                 suggestionsBox.classList.add('hidden');
                 suggestionsBox.classList.remove('flex');
@@ -509,7 +509,7 @@ function renderMovieCard(movie) {
     return `
         <div class="movie-card group flex flex-col bg-surface-container/30 border border-outline-variant/10 rounded-2xl overflow-hidden hover:border-primary-container/30 hover:bg-surface-container/50 hover:shadow-2xl hover:shadow-primary-container/5 transition-all duration-500 cursor-pointer" data-movie-id="${movie.id}" onclick="window.location.href='/movie.html?id=${movie.id}'">
             <div class="relative aspect-[2/3] overflow-hidden card-media-container">
-                <img src="${movie.poster_url}" alt="${movie.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy" onerror="this.src='https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover'" />
+                <img src="${movie.poster_url}" alt="${movie.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" loading="lazy" onerror="this.src='https://placehold.co/500x750/131313/FFFFFF?text=No+Cover'" />
                 <div class="movie-rating-badge absolute top-3 right-3 flex items-center gap-2 z-30 transition-opacity duration-300">
                     <div class="px-3 py-1 bg-black/60 backdrop-blur-md border border-outline-variant/20 rounded-full flex items-center gap-1">
                         <span class="material-symbols-outlined text-[14px] material-fill-1 text-primary-container">star</span>
@@ -824,8 +824,20 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     if (globalSearchInput) {
-        globalSearchInput.addEventListener('input', triggerSearchSuggest);
-        globalSearchInput.addEventListener('focus', triggerSearchSuggest);
+        globalSearchInput.addEventListener('input', () => {
+            if (ypDropdown) {
+                ypDropdown.classList.add('hidden');
+                ypDropdown.classList.remove('flex');
+            }
+            triggerSearchSuggest();
+        });
+        globalSearchInput.addEventListener('focus', () => {
+            if (ypDropdown) {
+                ypDropdown.classList.add('hidden');
+                ypDropdown.classList.remove('flex');
+            }
+            triggerSearchSuggest();
+        });
         globalSearchInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') executeSearchGlobal();
         });
@@ -833,7 +845,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (globalYearInput) {
         globalYearInput.addEventListener('input', triggerSearchSuggest);
-        globalYearInput.addEventListener('focus', triggerSearchSuggest);
+        globalYearInput.addEventListener('focus', (e) => {
+            // Nasconde i suggerimenti di ricerca se aperti, poiché l'utente sta aprendo il selettore anni
+            const suggestionsBox = document.getElementById('search-suggestions');
+            if (suggestionsBox) {
+                suggestionsBox.classList.add('hidden');
+                suggestionsBox.classList.remove('flex');
+            }
+        });
         globalYearInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') executeSearchGlobal();
         });
@@ -898,6 +917,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             renderYearPicker();
             ypDropdown.classList.toggle('hidden');
             ypDropdown.classList.toggle('flex');
+            
+            // Chiude la box dei suggerimenti di ricerca all'apertura del picker
+            const suggestionsBox = document.getElementById('search-suggestions');
+            if (suggestionsBox) {
+                suggestionsBox.classList.add('hidden');
+                suggestionsBox.classList.remove('flex');
+            }
         });
         
         if (ypPrev) ypPrev.addEventListener('click', (e) => { e.stopPropagation(); currentDecadeStart -= 10; renderYearPicker(); });
@@ -985,8 +1011,17 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (response.ok && data.success) {
                     if (statusBox) {
                         statusBox.className = 'px-4 py-3 rounded-lg border font-body-md text-body-md transition-all duration-300 bg-green-500/10 border-green-500/30 text-green-200';
-                        statusBox.innerHTML = `<strong>Successo!</strong> Segnalazione salvata. Grazie per aver migliorato Stoike!`;
+                        statusBox.innerHTML = `<strong>Successo!</strong> Segnalazione inviata. Apertura del ticket in corso...`;
                     }
+                    
+                    // Open GitHub issue or prefilled fallback creation page
+                    if (data.issue_url && data.issue_url !== '#') {
+                        window.open(data.issue_url, '_blank');
+                    } else {
+                        const prefilledUrl = `https://github.com/StoikeTeam/Stoike/issues/new?title=${encodeURIComponent(`[Bug Report] ${title}`)}&body=${encodeURIComponent(`# Bug Report\n\n## Descrizione\n${description}\n\n## Info aggiuntive\n- **Email**: ${email || 'Non inserita'}\n- **Pagina**: ${window.location.href}\n- **Browser**: ${navigator.userAgent}`)}`;
+                        window.open(prefilledUrl, '_blank');
+                    }
+
                     sForm.reset();
                     setTimeout(() => {
                         closeS();
@@ -1192,8 +1227,20 @@ function setupMobileSearchOverlayLogic() {
     }
 
     if (input) {
-        input.addEventListener('input', triggerMobileSearchSuggest);
-        input.addEventListener('focus', triggerMobileSearchSuggest);
+        input.addEventListener('input', () => {
+            if (mypDropdown) {
+                mypDropdown.classList.add('hidden');
+                mypDropdown.classList.remove('flex');
+            }
+            triggerMobileSearchSuggest();
+        });
+        input.addEventListener('focus', () => {
+            if (mypDropdown) {
+                mypDropdown.classList.add('hidden');
+                mypDropdown.classList.remove('flex');
+            }
+            triggerMobileSearchSuggest();
+        });
         input.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') executeMobileSearch();
         });
@@ -1201,7 +1248,12 @@ function setupMobileSearchOverlayLogic() {
 
     if (yearInput) {
         yearInput.addEventListener('input', triggerMobileSearchSuggest);
-        yearInput.addEventListener('focus', triggerMobileSearchSuggest);
+        yearInput.addEventListener('focus', (e) => {
+            if (suggestionsBox) {
+                suggestionsBox.classList.add('hidden');
+                suggestionsBox.classList.remove('flex');
+            }
+        });
         yearInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') executeMobileSearch();
         });
@@ -1266,6 +1318,11 @@ function setupMobileSearchOverlayLogic() {
             renderMobileYearPicker();
             mypDropdown.classList.toggle('hidden');
             mypDropdown.classList.toggle('flex');
+
+            if (suggestionsBox) {
+                suggestionsBox.classList.add('hidden');
+                suggestionsBox.classList.remove('flex');
+            }
         });
         
         if (mypPrev) mypPrev.addEventListener('click', (e) => { e.stopPropagation(); currentMobileDecadeStart -= 10; renderMobileYearPicker(); });
@@ -1373,7 +1430,7 @@ async function fetchMobileSuggestions() {
             const movie = mapTMDBMovie(m);
             const item = document.createElement('div');
             item.className = 'flex items-center gap-3 p-3 hover:bg-surface-container-high cursor-pointer transition-colors border-b border-outline-variant/10 last:border-0';
-            item.innerHTML = `<img src="${movie.poster_url}" class="w-10 h-14 object-cover rounded shadow-sm" alt="${movie.title}" onerror="this.src='https://via.placeholder.com/150x225/131313/FFFFFF?text=No+Cover'"><div class="flex-1 min-w-0"><div class="font-label-md text-white truncate">${movie.title}</div><div class="font-label-sm text-on-surface-variant">${movie.release_year} • <span class="material-symbols-outlined text-[12px] material-fill-1 text-primary-container align-middle">star</span> ${movie.rating}</div></div>`;
+            item.innerHTML = `<img src="${movie.poster_url}" class="w-10 h-14 object-cover rounded shadow-sm" alt="${movie.title}" onerror="this.src='https://placehold.co/150x225/131313/FFFFFF?text=No+Cover'"><div class="flex-1 min-w-0"><div class="font-label-md text-white truncate">${movie.title}</div><div class="font-label-sm text-on-surface-variant">${movie.release_year} • <span class="material-symbols-outlined text-[12px] material-fill-1 text-primary-container align-middle">star</span> ${movie.rating}</div></div>`;
             item.addEventListener('click', () => {
                 suggestionsBox.classList.add('hidden');
                 suggestionsBox.classList.remove('flex');
