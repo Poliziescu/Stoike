@@ -1067,7 +1067,7 @@ app.post('/api/report-bug', async (req, res) => {
 
     timestamps.push(now);
 
-    const { title, description, email, currentPage, browserInfo } = req.body || {};
+    const { title, description, email, currentPage, browserInfo, username } = req.body || {};
 
     if (!title || !description) {
         return res.status(400).json({ success: false, message: 'Titolo e descrizione sono obbligatori.' });
@@ -1081,8 +1081,15 @@ app.post('/api/report-bug', async (req, res) => {
         }
     }
 
-    // Credenziali GitHub
-    const githubToken = process.env.GITHUB_TOKEN;
+    // Credenziali GitHub (con supporto a token specifici per utente)
+    let githubToken = process.env.GITHUB_TOKEN;
+    if (username) {
+        const envKey = `GITHUB_TOKEN_${username.toUpperCase()}`;
+        if (process.env[envKey]) {
+            githubToken = process.env[envKey];
+            console.log(`🔑 [GitHub API] Utilizzo token specifico per l'utente ${username} (${envKey})`);
+        }
+    }
     const githubOwner = process.env.GITHUB_OWNER;
     const githubRepo = process.env.GITHUB_REPO;
 
@@ -1095,6 +1102,7 @@ ${title}
 ${description}
 
 ## Informazioni aggiuntive
+- **Utente Stoike**: ${username || 'Anonimo'}
 - **Email utente**: ${email || 'Non inserita'}
 - **Pagina corrente**: ${currentPage}
 - **Browser Info**: ${browserInfo}
@@ -1257,7 +1265,7 @@ app.post('/api/webhook/github', express.raw({ type: 'application/json' }), async
         console.log(`🔔 [Webhook GitHub] Ticket chiuso: '${issueTitle}'`);
 
         // Estrae email e titolo originale
-        const emailMatch = issueBody.match(/## Email utente\s*\r?\n\s*([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
+        const emailMatch = issueBody.match(/(?:## Email utente\s*\r?\n\s*|- \*\*Email utente\*\*:\s*|Email utente:\s*|Email:\s*)([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/i);
         const titleMatch = issueBody.match(/## Titolo\s*\r?\n\s*([^\r\n]+)/i);
 
         const userEmail = emailMatch ? emailMatch[1].trim() : null;

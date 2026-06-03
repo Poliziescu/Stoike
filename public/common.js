@@ -996,6 +996,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             
             try {
+                const loggedInUser = localStorage.getItem('stoike_user') || 'Anonimo';
                 const response = await fetch('/api/report-bug', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -1004,7 +1005,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                         description: description,
                         email: email || '',
                         currentPage: window.location.href,
-                        browserInfo: navigator.userAgent
+                        browserInfo: navigator.userAgent,
+                        username: loggedInUser
                     })
                 });
                 
