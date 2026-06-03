@@ -105,6 +105,8 @@ async function checkAuthState() {
                     const latestNickname = data.nickname || '';
                     const latestAvatar = data.avatar_url || 'https://lh3.googleusercontent.com/aida-public/AB6AXuDt7PZrBX9BJiiPiYcPFspIG13xOyP14bl7xlFDunbqT-rfZhgwIV4UoGe3TzGGWQ6Dr4xdgALPg9tdgrKl49JGdE-JxxariZRrTvGKlUOkpH8aXPB7bpDFTEXVR7UoGuf8cDFq8n1yxhiOpV9KwKetxG8xApbTLjbO-sGc18y_DLG_SiY9uSexy1JZ3rurDYa8JyyWg1_89Owywrb4zM9AejdI2QnwfYPYIUCaRcho_FQAHUtG0xJ2o6PvIFx0NFMbVr3D2STI9KL3';
                     
+                    console.log("👤 [Stoike Auth] Cache:", { cachedNickname, cachedAvatar }, "Server:", { latestNickname, latestAvatar });
+
                     // Se ci sono variazioni rispetto alla cache, aggiorna il DOM
                     if (latestNickname !== cachedNickname || latestAvatar !== cachedAvatar) {
                         localStorage.setItem('stoike_nickname', latestNickname);
@@ -1011,15 +1013,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (response.ok && data.success) {
                     if (statusBox) {
                         statusBox.className = 'px-4 py-3 rounded-lg border font-body-md text-body-md transition-all duration-300 bg-green-500/10 border-green-500/30 text-green-200';
-                        statusBox.innerHTML = `<strong>Successo!</strong> Segnalazione inviata. Apertura del ticket in corso...`;
-                    }
-                    
-                    // Open GitHub issue or prefilled fallback creation page
-                    if (data.issue_url && data.issue_url !== '#') {
-                        window.open(data.issue_url, '_blank');
-                    } else {
-                        const prefilledUrl = `https://github.com/StoikeTeam/Stoike/issues/new?title=${encodeURIComponent(`[Bug Report] ${title}`)}&body=${encodeURIComponent(`# Bug Report\n\n## Descrizione\n${description}\n\n## Info aggiuntive\n- **Email**: ${email || 'Non inserita'}\n- **Pagina**: ${window.location.href}\n- **Browser**: ${navigator.userAgent}`)}`;
-                        window.open(prefilledUrl, '_blank');
+                        statusBox.innerHTML = `<strong>Successo!</strong> Segnalazione salvata. Grazie per aver migliorato Stoike!`;
                     }
 
                     sForm.reset();

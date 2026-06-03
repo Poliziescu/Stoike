@@ -120,30 +120,58 @@ function triggerAvatarUpload() {
     if (input) input.click();
 }
 
-// Legge il file selezionato e aggiorna la preview (in Base64)
+// Legge il file selezionato e aggiorna la preview (in Base64 con ridimensionamento)
 function previewAvatar(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Validazione dimensioni (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-        showStatus('La dimensione della foto supera i 5MB. Seleziona un file più leggero.', 'error');
+    // Validazione dimensioni iniziale (max 10MB per caricamento)
+    if (file.size > 10 * 1024 * 1024) {
+        showStatus('La dimensione della foto supera i 10MB. Seleziona un file più leggero.', 'error');
         event.target.value = ''; // svuota input
         return;
     }
 
     const reader = new FileReader();
     reader.onload = function(e) {
-        const base64String = e.target.result;
-        
-        // Aggiorna la preview nel form
-        const preview = document.getElementById('profile-avatar-preview');
-        if (preview) {
-            preview.src = base64String;
-        }
-        
-        // Salva in memoria per il salvataggio
-        uploadedAvatarBase64 = base64String;
+        const img = new Image();
+        img.onload = function() {
+            const canvas = document.createElement('canvas');
+            const MAX_WIDTH = 200;
+            const MAX_HEIGHT = 200;
+            let width = img.width;
+            let height = img.height;
+
+            if (width > height) {
+                if (width > MAX_WIDTH) {
+                    height *= MAX_WIDTH / width;
+                    width = MAX_WIDTH;
+                }
+            } else {
+                if (height > MAX_HEIGHT) {
+                    width *= MAX_HEIGHT / height;
+                    height = MAX_HEIGHT;
+                }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Comprime in formato JPEG (qualità 0.7) per un Base64 estremamente leggero (circa 5-15 KB)
+            const base64String = canvas.toDataURL('image/jpeg', 0.7);
+
+            // Aggiorna la preview nel form
+            const preview = document.getElementById('profile-avatar-preview');
+            if (preview) {
+                preview.src = base64String;
+            }
+            
+            // Salva in memoria per il salvataggio
+            uploadedAvatarBase64 = base64String;
+        };
+        img.src = e.target.result;
     };
     reader.readAsDataURL(file);
 }

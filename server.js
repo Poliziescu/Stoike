@@ -369,29 +369,31 @@ app.post('/api/user/profile', async (req, res) => {
             }
         }
     }
-
     let avatarUrl = null;
 
-    // 2. Decodifica e salvataggio dell'immagine profilo base64
+    // 2. Salvataggio dell'immagine profilo (salviamo in Base64 direttamente nel DB per visibilità cross-device)
     if (avatar_data) {
-        try {
-            const matches = avatar_data.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
-            if (!matches || matches.length !== 3) {
-                return res.status(400).json({ success: false, message: 'Formato immagine non valido.' });
+        if (avatar_data.startsWith('data:image/')) {
+            avatarUrl = avatar_data;
+            console.log(`💾 [Profile Update] Avatar configurato direttamente come stringa Base64`);
+            
+            // Creiamo comunque una copia locale di backup su disco
+            try {
+                const matches = avatar_data.match(/^data:image\/([a-zA-Z0-9]+);base64,(.+)$/);
+                if (matches && matches.length === 3) {
+                    const ext = matches[1];
+                    const base64Data = matches[2];
+                    const buffer = Buffer.from(base64Data, 'base64');
+                    const filename = `avatar_${username.toLowerCase()}_${Date.now()}.${ext}`;
+                    const filepath = path.join(uploadsDir, filename);
+                    fs.writeFileSync(filepath, buffer);
+                    console.log(`💾 [Profile Update Backup] Copia di backup salvata localmente: /uploads/${filename}`);
+                }
+            } catch (err) {
+                console.warn("⚠️ [Profile Update Backup] Errore salvataggio backup locale (non bloccante):", err.message);
             }
-            const ext = matches[1];
-            const base64Data = matches[2];
-            const buffer = Buffer.from(base64Data, 'base64');
-
-            const filename = `avatar_${username.toLowerCase()}_${Date.now()}.${ext}`;
-            const filepath = path.join(uploadsDir, filename);
-
-            fs.writeFileSync(filepath, buffer);
-            avatarUrl = `/uploads/${filename}`;
-            console.log(`💾 [Profile Update] Avatar salvato localmente: ${avatarUrl}`);
-        } catch (err) {
-            console.error("❌ Errore nel salvataggio dell'immagine:", err.message);
-            return res.status(500).json({ success: false, message: 'Impossibile salvare l\'immagine del profilo.' });
+        } else {
+            return res.status(400).json({ success: false, message: 'Formato immagine non valido.' });
         }
     }
 
