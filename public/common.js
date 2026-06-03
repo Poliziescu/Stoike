@@ -38,8 +38,8 @@ function mapTMDBMovie(m) {
         genre: m.genre_ids ? m.genre_ids.map(id => tmdbGenres[id] || '').filter(Boolean).join(', ') : '',
         rating: m.vote_average ? m.vote_average.toFixed(1) : 'N/A',
         release_year: m.release_date ? m.release_date.substring(0, 4) : 'N/A',
-        poster_url: m.poster_path ? `https://image.tmdb.org/t/p/w500${m.poster_path}` : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover',
-        backdrop_url: m.backdrop_path ? `https://image.tmdb.org/t/p/w1280${m.backdrop_path}` : 'https://via.placeholder.com/1280x720/131313/FFFFFF?text=No+Backdrop',
+        poster_url: m.poster_path ? (m.poster_path.startsWith('http') ? m.poster_path : `https://image.tmdb.org/t/p/w500${m.poster_path}`) : 'https://via.placeholder.com/500x750/131313/FFFFFF?text=No+Cover',
+        backdrop_url: m.backdrop_path ? (m.backdrop_path.startsWith('http') ? m.backdrop_path : `https://image.tmdb.org/t/p/w1280${m.backdrop_path}`) : 'https://via.placeholder.com/1280x720/131313/FFFFFF?text=No+Backdrop',
         synopsis: m.overview || ''
     };
 }

@@ -35,9 +35,155 @@ app.use((req, res, next) => {
 
 // Configurazione variabili d'ambiente
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
+const OMDB_API_KEY = process.env.OMDB_API_KEY;
 const TMDB_BASE_URL = 'https://api.themoviedb.org/3';
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_KEY = process.env.SUPABASE_KEY;
+
+// OMDb Mappings and Helpers
+const GENRE_MAP = {
+    "Action": 28,
+    "Adventure": 12,
+    "Animation": 16,
+    "Comedy": 35,
+    "Crime": 80,
+    "Documentary": 99,
+    "Drama": 18,
+    "Family": 10751,
+    "Fantasy": 14,
+    "History": 36,
+    "Horror": 27,
+    "Music": 10402,
+    "Mystery": 9648,
+    "Romance": 10749,
+    "Science Fiction": 878,
+    "Sci-Fi": 878,
+    "TV Movie": 10770,
+    "Thriller": 53,
+    "War": 10752,
+    "Western": 37
+};
+
+const STATIC_GENRES = [
+    { "id": 28, "name": "Action" },
+    { "id": 12, "name": "Adventure" },
+    { "id": 16, "name": "Animation" },
+    { "id": 35, "name": "Comedy" },
+    { "id": 80, "name": "Crime" },
+    { "id": 99, "name": "Documentary" },
+    { "id": 18, "name": "Drama" },
+    { "id": 10751, "name": "Family" },
+    { "id": 14, "name": "Fantasy" },
+    { "id": 36, "name": "History" },
+    { "id": 27, "name": "Horror" },
+    { "id": 10402, "name": "Music" },
+    { "id": 9648, "name": "Mystery" },
+    { "id": 10749, "name": "Romance" },
+    { "id": 878, "name": "Science Fiction" },
+    { "id": 10770, "name": "TV Movie" },
+    { "id": 53, "name": "Thriller" },
+    { "id": 10752, "name": "War" },
+    { "id": 37, "name": "Western" }
+];
+
+const personCache = new Map();
+
+function parseImdbIdToId(imdbId) {
+    if (!imdbId) return null;
+    const match = imdbId.match(/tt(\d+)/);
+    return match ? parseInt(match[1], 10) : null;
+}
+
+function formatIdToImdbId(id) {
+    if (!id) return null;
+    const idStr = String(id);
+    if (idStr.length < 7) {
+        return 'tt' + idStr.padStart(7, '0');
+    }
+    return 'tt' + idStr;
+}
+
+function hashStringToInt(str) {
+    if (!str) return 0;
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return Math.abs(hash);
+}
+
+function cleanReleaseDate(releasedStr, yearStr) {
+    if (releasedStr && releasedStr !== 'N/A') {
+        const d = new Date(releasedStr);
+        if (!isNaN(d.getTime())) {
+            return d.toISOString().substring(0, 10);
+        }
+    }
+    if (yearStr && yearStr !== 'N/A') {
+        const y = yearStr.split('–')[0];
+        return `${y}-01-01`;
+    }
+    return 'N/A';
+}
+
+function getFranchiseQuery(title) {
+    if (!title) return null;
+    let clean = title.split(':')[0].split(' - ')[0];
+    clean = clean.replace(/\s+\d+$/, '').trim();
+    if (clean.length < 4) return null;
+    return clean;
+}
+
+function mapOMDBDetailToTMDB(d) {
+    const id = parseImdbIdToId(d.imdbID);
+    const rating = d.imdbRating && d.imdbRating !== 'N/A' ? parseFloat(d.imdbRating) : 0;
+    const release_date = cleanReleaseDate(d.Released, d.Year);
+    
+    const genreIds = d.Genre && d.Genre !== 'N/A'
+        ? d.Genre.split(', ').map(g => GENRE_MAP[g] || GENRE_MAP[g.trim()]).filter(Boolean)
+        : [];
+    const genres = d.Genre && d.Genre !== 'N/A'
+        ? d.Genre.split(', ').map((g, idx) => ({ id: genreIds[idx] || (1000 + idx), name: g }))
+        : [];
+
+    const franchiseQuery = getFranchiseQuery(d.Title);
+    const belongs_to_collection = franchiseQuery ? {
+        id: id,
+        name: `${franchiseQuery} Collection`
+    } : null;
+
+    return {
+        id: id,
+        title: d.Title,
+        original_title: d.Title,
+        genres: genres,
+        genre_ids: genreIds,
+        vote_average: rating,
+        vote_count: d.imdbVotes && d.imdbVotes !== 'N/A' ? parseInt(d.imdbVotes.replace(/,/g, ''), 10) : 0,
+        release_date: release_date,
+        poster_path: d.Poster && d.Poster !== 'N/A' ? d.Poster : null,
+        backdrop_path: d.Poster && d.Poster !== 'N/A' ? d.Poster : null,
+        overview: d.Plot && d.Plot !== 'N/A' ? d.Plot : '',
+        belongs_to_collection: belongs_to_collection
+    };
+}
+
+async function fetchMovieDetailsFromOMDB(imdbID) {
+    try {
+        const response = await axios.get(`http://www.omdbapi.com/`, {
+            params: {
+                apikey: OMDB_API_KEY,
+                i: imdbID,
+                plot: 'short'
+            },
+            timeout: 5000
+        });
+        return response.data;
+    } catch (err) {
+        console.error(`Error fetching OMDB details for ${imdbID}:`, err.message);
+        return null;
+    }
+}
 
 // Headers di utility per le richieste Supabase RPC/REST
 function supabaseHeaders() {
@@ -114,31 +260,357 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.get('/api/tmdb/*', async (req, res) => {
     const endpoint = req.params[0];
     const params = { ...req.query };
-    params.api_key = TMDB_API_KEY;
-    // Language is now sent by the frontend based on user i18n selection
-    // Rimuove cache buster parametro _t
-    if (params._t) {
-        delete params._t;
-    }
 
-    const targetUrl = `${TMDB_BASE_URL}/${endpoint}`;
-    console.log(`🔍 [TMDb Proxy] Chiamata a: ${targetUrl} con parametri:`, params);
+    console.log(`🔍 [OMDb Proxy] Intercettato endpoint TMDB: ${endpoint} con parametri:`, params);
 
     try {
+        // 1. GENRES
+        if (endpoint === 'genre/movie/list') {
+            return res.json({ genres: STATIC_GENRES });
+        }
+
+        // 2. TRENDING
+        if (endpoint === 'trending/movie/week') {
+            const TRENDING_TITLES = [
+                "Dune: Part Two", "Deadpool & Wolverine", "Inside Out 2", "Gladiator II", 
+                "Oppenheimer", "Barbie", "Spider-Man: Across the Spider-Verse", "The Batman", 
+                "Interstellar", "Inception", "The Dark Knight", "Avatar: The Way of Water"
+            ];
+            const page = parseInt(params.page) || 1;
+            const limit = 10;
+            const start = (page - 1) * limit;
+            const titlesSlice = TRENDING_TITLES.slice(start, start + limit);
+
+            const movies = await Promise.all(titlesSlice.map(async (title) => {
+                const searchRes = await axios.get('http://www.omdbapi.com/', {
+                    params: { apikey: OMDB_API_KEY, t: title, type: 'movie' }
+                });
+                return searchRes.data && searchRes.data.Response === 'True' ? mapOMDBDetailToTMDB(searchRes.data) : null;
+            }));
+
+            return res.json({
+                results: movies.filter(Boolean),
+                page: page,
+                total_pages: Math.ceil(TRENDING_TITLES.length / limit),
+                total_results: TRENDING_TITLES.length
+            });
+        }
+
+        // 3. NOW PLAYING
+        if (endpoint === 'movie/now_playing') {
+            const NOW_PLAYING_TITLES = [
+                "Furiosa: A Mad Max Saga", "The Fall Guy", "Civil War", "Challengers", 
+                "IF", "Godzilla x Kong: The New Empire", "Kingdom of the Planet of the Apes",
+                "A Quiet Place: Day One", "Despicable Me 4", "Twisters", "Alien: Romulus"
+            ];
+            const movies = await Promise.all(NOW_PLAYING_TITLES.slice(0, 10).map(async (title) => {
+                const searchRes = await axios.get('http://www.omdbapi.com/', {
+                    params: { apikey: OMDB_API_KEY, t: title, type: 'movie' }
+                });
+                return searchRes.data && searchRes.data.Response === 'True' ? mapOMDBDetailToTMDB(searchRes.data) : null;
+            }));
+            return res.json({
+                results: movies.filter(Boolean),
+                page: 1,
+                total_pages: 1,
+                total_results: movies.filter(Boolean).length
+            });
+        }
+
+        // 4. SEARCH MOVIE
+        if (endpoint === 'search/movie') {
+            const query = params.query;
+            const year = params.primary_release_year;
+            const page = params.page || 1;
+            if (!query) {
+                return res.json({ results: [], total_results: 0, total_pages: 0 });
+            }
+
+            const searchRes = await axios.get('http://www.omdbapi.com/', {
+                params: { apikey: OMDB_API_KEY, s: query, y: year || undefined, page: page, type: 'movie' }
+            });
+
+            if (searchRes.data && searchRes.data.Search) {
+                const movies = await Promise.all(searchRes.data.Search.map(async (item) => {
+                    const detail = await fetchMovieDetailsFromOMDB(item.imdbID);
+                    return detail ? mapOMDBDetailToTMDB(detail) : null;
+                }));
+                const total = parseInt(searchRes.data.totalResults) || 0;
+                return res.json({
+                    results: movies.filter(Boolean),
+                    total_results: total,
+                    total_pages: Math.ceil(total / 10)
+                });
+            }
+            return res.json({ results: [], total_results: 0, total_pages: 0 });
+        }
+
+        // 5. DISCOVER MOVIE
+        if (endpoint === 'discover/movie') {
+            const year = params.primary_release_year;
+            const page = params.page || 1;
+            
+            let query = "the";
+            if (params.with_genres) {
+                const genreId = parseInt(params.with_genres);
+                const genreKeywords = {
+                    28: "action", 12: "adventure", 16: "animated", 35: "comedy",
+                    80: "crime", 99: "documentary", 18: "drama", 10751: "family",
+                    14: "fantasy", 36: "history", 27: "horror", 10402: "music",
+                    9648: "mystery", 10749: "romance", 878: "sci-fi", 53: "thriller",
+                    10752: "war", 37: "western"
+                };
+                query = genreKeywords[genreId] || "movie";
+            }
+
+            const searchRes = await axios.get('http://www.omdbapi.com/', {
+                params: { apikey: OMDB_API_KEY, s: query, y: year || undefined, page: page, type: 'movie' }
+            });
+
+            if (searchRes.data && searchRes.data.Search) {
+                const movies = await Promise.all(searchRes.data.Search.map(async (item) => {
+                    const detail = await fetchMovieDetailsFromOMDB(item.imdbID);
+                    return detail ? mapOMDBDetailToTMDB(detail) : null;
+                }));
+                const total = parseInt(searchRes.data.totalResults) || 0;
+                return res.json({
+                    results: movies.filter(Boolean),
+                    total_results: total,
+                    total_pages: Math.ceil(total / 10)
+                });
+            }
+            return res.json({ results: [], total_results: 0, total_pages: 0 });
+        }
+
+        // 6. MOVIE DETAIL
+        const movieDetailMatch = endpoint.match(/^movie\/(\d+)$/);
+        if (movieDetailMatch) {
+            const id = parseInt(movieDetailMatch[1], 10);
+            const imdbId = formatIdToImdbId(id);
+            const response = await axios.get('http://www.omdbapi.com/', {
+                params: { apikey: OMDB_API_KEY, i: imdbId, plot: 'full' }
+            });
+            if (response.data && response.data.Response === 'True') {
+                return res.json(mapOMDBDetailToTMDB(response.data));
+            }
+            return res.status(404).json({ error: 'Film non trovato' });
+        }
+
+        // 7. MOVIE CREDITS
+        const movieCreditsMatch = endpoint.match(/^movie\/(\d+)\/credits$/);
+        if (movieCreditsMatch) {
+            const id = parseInt(movieCreditsMatch[1], 10);
+            const imdbId = formatIdToImdbId(id);
+            const response = await axios.get('http://www.omdbapi.com/', {
+                params: { apikey: OMDB_API_KEY, i: imdbId }
+            });
+            if (response.data && response.data.Response === 'True') {
+                const d = response.data;
+                const cast = d.Actors && d.Actors !== 'N/A'
+                    ? d.Actors.split(', ').map(name => {
+                        const actorId = hashStringToInt(name);
+                        personCache.set(actorId, name);
+                        return {
+                            id: actorId,
+                            name: name,
+                            character: 'Actor',
+                            profile_path: null
+                        };
+                    })
+                    : [];
+                const crew = [];
+                if (d.Director && d.Director !== 'N/A') {
+                    d.Director.split(', ').forEach(name => {
+                        crew.push({ id: hashStringToInt(name), name: name, job: 'Director' });
+                    });
+                }
+                if (d.Writer && d.Writer !== 'N/A') {
+                    d.Writer.split(', ').forEach(name => {
+                        crew.push({ id: hashStringToInt(name), name: name, job: 'Writer' });
+                    });
+                }
+                return res.json({ cast, crew });
+            }
+            return res.status(404).json({ error: 'Film non trovato' });
+        }
+
+        // 8. MOVIE VIDEOS
+        const movieVideosMatch = endpoint.match(/^movie\/(\d+)\/videos$/);
+        if (movieVideosMatch) {
+            return res.json({ results: [] });
+        }
+
+        // 9. MOVIE SIMILAR
+        const movieSimilarMatch = endpoint.match(/^movie\/(\d+)\/similar$/);
+        if (movieSimilarMatch) {
+            const id = parseInt(movieSimilarMatch[1], 10);
+            const imdbId = formatIdToImdbId(id);
+            const response = await axios.get('http://www.omdbapi.com/', {
+                params: { apikey: OMDB_API_KEY, i: imdbId }
+            });
+            if (response.data && response.data.Response === 'True') {
+                const genreList = response.data.Genre ? response.data.Genre.split(', ') : [];
+                const primaryGenre = genreList[0] || 'movie';
+                const searchRes = await axios.get('http://www.omdbapi.com/', {
+                    params: { apikey: OMDB_API_KEY, s: primaryGenre, type: 'movie' }
+                });
+                if (searchRes.data && searchRes.data.Search) {
+                    const movies = await Promise.all(searchRes.data.Search.slice(0, 5).map(async (item) => {
+                        const detail = await fetchMovieDetailsFromOMDB(item.imdbID);
+                        return detail ? mapOMDBDetailToTMDB(detail) : null;
+                    }));
+                    return res.json({ results: movies.filter(Boolean) });
+                }
+            }
+            return res.json({ results: [] });
+        }
+
+        // 10. COLLECTION
+        const collectionMatch = endpoint.match(/^collection\/(\d+)$/);
+        if (collectionMatch) {
+            const id = parseInt(collectionMatch[1], 10);
+            const imdbId = formatIdToImdbId(id);
+            const response = await axios.get('http://www.omdbapi.com/', {
+                params: { apikey: OMDB_API_KEY, i: imdbId }
+            });
+            if (response.data && response.data.Response === 'True') {
+                const franchiseQuery = getFranchiseQuery(response.data.Title);
+                if (franchiseQuery) {
+                    const searchRes = await axios.get('http://www.omdbapi.com/', {
+                        params: { apikey: OMDB_API_KEY, s: franchiseQuery, type: 'movie' }
+                    });
+                    if (searchRes.data && searchRes.data.Search) {
+                        const movies = await Promise.all(searchRes.data.Search.map(async (item) => {
+                            const detail = await fetchMovieDetailsFromOMDB(item.imdbID);
+                            return detail ? mapOMDBDetailToTMDB(detail) : null;
+                        }));
+                        const parts = movies.filter(Boolean).sort((a, b) => new Date(a.release_date) - new Date(b.release_date));
+                        return res.json({
+                            id: id,
+                            name: `${franchiseQuery} Collection`,
+                            parts: parts
+                        });
+                    }
+                }
+            }
+            return res.json({ id: id, name: 'Collection', parts: [] });
+        }
+
+        // 11. RELEASE DATES
+        const releaseDatesMatch = endpoint.match(/^movie\/(\d+)\/release_dates$/);
+        if (releaseDatesMatch) {
+            const id = parseInt(releaseDatesMatch[1], 10);
+            const imdbId = formatIdToImdbId(id);
+            const response = await axios.get('http://www.omdbapi.com/', {
+                params: { apikey: OMDB_API_KEY, i: imdbId }
+            });
+            if (response.data && response.data.Response === 'True') {
+                const cleanedDate = cleanReleaseDate(response.data.Released, response.data.Year);
+                const dateISO = cleanedDate !== 'N/A' ? `${cleanedDate}T00:00:00.000Z` : null;
+                return res.json({
+                    results: [
+                        {
+                            iso_3166_1: "US",
+                            release_dates: dateISO ? [{ type: 3, release_date: dateISO }] : []
+                        },
+                        {
+                            iso_3166_1: "IT",
+                            release_dates: dateISO ? [{ type: 3, release_date: dateISO }] : []
+                        }
+                    ]
+                });
+            }
+            return res.json({ results: [] });
+        }
+
+        // 12. SEARCH PERSON
+        if (endpoint === 'search/person') {
+            const query = params.query;
+            if (!query) return res.json({ results: [] });
+            const personId = hashStringToInt(query);
+            personCache.set(personId, query);
+            return res.json({
+                results: [
+                    {
+                        id: personId,
+                        name: query,
+                        profile_path: null
+                    }
+                ]
+            });
+        }
+
+        // 13. PERSON DETAIL
+        const personDetailMatch = endpoint.match(/^person\/(\d+)$/);
+        if (personDetailMatch) {
+            const id = parseInt(personDetailMatch[1], 10);
+            const name = personCache.get(id) || `Actor #${id}`;
+            return res.json({
+                id: id,
+                name: name,
+                biography: '',
+                birthday: null,
+                place_of_birth: null,
+                profile_path: null
+            });
+        }
+
+        // 14. PERSON MOVIE CREDITS
+        const personMovieCreditsMatch = endpoint.match(/^person\/(\d+)\/movie_credits$/);
+        if (personMovieCreditsMatch) {
+            const id = parseInt(personMovieCreditsMatch[1], 10);
+            const name = personCache.get(id);
+            if (name) {
+                const searchRes = await axios.get('http://www.omdbapi.com/', {
+                    params: { apikey: OMDB_API_KEY, s: name, type: 'movie' }
+                });
+                if (searchRes.data && searchRes.data.Search) {
+                    const movies = await Promise.all(searchRes.data.Search.map(async (item) => {
+                        const detail = await fetchMovieDetailsFromOMDB(item.imdbID);
+                        return detail ? mapOMDBDetailToTMDB(detail) : null;
+                    }));
+                    return res.json({ cast: movies.filter(Boolean) });
+                }
+            }
+            return res.json({ cast: [] });
+        }
+
+        // 15. PERSON POPULAR
+        if (endpoint === 'person/popular') {
+            const POPULAR_ACTORS = [
+                "Leonardo DiCaprio", "Brad Pitt", "Scarlett Johansson", "Tom Hanks", 
+                "Robert Downey Jr.", "Johnny Depp", "Jennifer Lawrence", "Matt Damon", 
+                "Morgan Freeman", "Meryl Streep", "Christian Bale", "Al Pacino"
+            ];
+            const results = POPULAR_ACTORS.map(name => {
+                const actorId = hashStringToInt(name);
+                personCache.set(actorId, name);
+                return {
+                    id: actorId,
+                    name: name,
+                    profile_path: null,
+                    known_for: []
+                };
+            });
+            return res.json({ results, total_pages: 1, page: 1 });
+        }
+
+        // Fallback generic proxy to TMDB (just in case)
+        const targetUrl = `${TMDB_BASE_URL}/${endpoint}`;
+        console.log(`⚠️ [OMDb Proxy Fallback] Endpoint sconosciuto, inoltro a TMDB: ${targetUrl}`);
+        params.api_key = TMDB_API_KEY;
         const response = await axios.get(targetUrl, {
             params,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                'User-Agent': 'Mozilla/5.0'
             },
             timeout: 10000
         });
-        console.log(`✅ [TMDb Proxy] Risposta ricevuta: Stato ${response.status}`);
         return res.status(response.status).json(response.data);
+
     } catch (error) {
-        console.error(`❌ [TMDb Proxy] ERRORE:`, error.message);
-        const status = error.response ? error.response.status : 500;
-        const data = error.response ? error.response.data : { error: error.message };
-        return res.status(status).json(data);
+        console.error(`❌ [OMDb Proxy] ERRORE:`, error.message);
+        return res.status(500).json({ error: error.message });
     }
 });
 
@@ -931,28 +1403,28 @@ app.post('/api/reminders', async (req, res) => {
     let finalPosterUrl = poster_url;
     let finalReleaseDate = release_date;
 
-    // Recupera informazioni mancanti o incomplete da TMDb
+    // Recupera informazioni mancanti o incomplete da OMDb
     try {
-        console.log(`🔍 [TMDb Lookup] Recupero dettagli film da TMDb per ID ${tmdb_movie_id}...`);
-        const tmdbRes = await axios.get(`${TMDB_BASE_URL}/movie/${tmdb_movie_id}`, {
-            params: { api_key: TMDB_API_KEY, language: 'it-IT' },
+        console.log(`🔍 [OMDb Lookup] Recupero dettagli film da OMDb per ID ${tmdb_movie_id}...`);
+        const imdbId = formatIdToImdbId(tmdb_movie_id);
+        const tmdbRes = await axios.get('http://www.omdbapi.com/', {
+            params: { apikey: OMDB_API_KEY, i: imdbId },
             timeout: 5000
         });
-        if (tmdbRes.data) {
+        if (tmdbRes.data && tmdbRes.data.Response === 'True') {
+            const mapped = mapOMDBDetailToTMDB(tmdbRes.data);
             if (!finalTitle || finalTitle === 'undefined' || finalTitle === '') {
-                finalTitle = tmdbRes.data.title;
+                finalTitle = mapped.title;
             }
             if (!finalReleaseDate || finalReleaseDate === 'undefined' || finalReleaseDate === '') {
-                finalReleaseDate = tmdbRes.data.release_date;
+                finalReleaseDate = mapped.release_date;
             }
             if (!finalPosterUrl || finalPosterUrl.includes('undefined') || finalPosterUrl.includes('placeholder') || finalPosterUrl === '') {
-                finalPosterUrl = tmdbRes.data.poster_path
-                    ? `https://image.tmdb.org/t/p/w500${tmdbRes.data.poster_path}`
-                    : `https://via.placeholder.com/500x750/131313/FFFFFF?text=${encodeURIComponent(finalTitle || 'No+Cover')}`;
+                finalPosterUrl = mapped.poster_path || `https://via.placeholder.com/500x750/131313/FFFFFF?text=${encodeURIComponent(finalTitle || 'No+Cover')}`;
             }
         }
     } catch (tmdbErr) {
-        console.warn(`⚠️ [TMDb Lookup] Fallito recupero da TMDb per ID ${tmdb_movie_id}: ${tmdbErr.message}`);
+        console.warn(`⚠️ [OMDb Lookup] Fallito recupero da OMDb per ID ${tmdb_movie_id}: ${tmdbErr.message}`);
     }
 
     if (!finalTitle) {
@@ -1466,35 +1938,42 @@ async function checkAndSendReleaseNotifications() {
         for (const reminder of reminders) {
             let relDate = reminder.release_date;
 
-            // Se la release_date è mancante, tenta di recuperarla da TMDb e aggiornare il DB
+            // Se la release_date è mancante, tenta di recuperarla da OMDb e aggiornare il DB
             if (!relDate && reminder.tmdb_movie_id) {
-                console.log(`🔍 [Release Worker] release_date mancante per '${reminder.title}' (ID: ${reminder.tmdb_movie_id}). Tentativo recupero da TMDb...`);
+                console.log(`🔍 [Release Worker] release_date mancante per '${reminder.title}' (ID: ${reminder.tmdb_movie_id}). Tentativo recupero da OMDb...`);
                 try {
-                    const tmdbRes = await axios.get(`${TMDB_BASE_URL}/movie/${reminder.tmdb_movie_id}`, {
-                        params: { api_key: TMDB_API_KEY, language: 'it-IT' },
+                    const imdbId = formatIdToImdbId(reminder.tmdb_movie_id);
+                    const tmdbRes = await axios.get('http://www.omdbapi.com/', {
+                        params: { apikey: OMDB_API_KEY, i: imdbId },
                         timeout: 5000
                     });
-                    if (tmdbRes.data && tmdbRes.data.release_date) {
-                        relDate = tmdbRes.data.release_date;
-                        console.log(`✅ [Release Worker] release_date recuperata da TMDb: ${relDate}. Aggiornamento DB...`);
-                        // Aggiorna il record nel DB con la release_date recuperata
-                        try {
-                            await axios.patch(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
-                                release_date: relDate
-                            }, {
-                                params: { id: `eq.${reminder.id}` },
-                                headers: supabaseHeaders(),
-                                timeout: 10000
-                            });
-                        } catch (patchDateErr) {
-                            console.warn(`⚠️ [Release Worker] Impossibile aggiornare release_date nel DB per ID ${reminder.id}:`, patchDateErr.message);
+                    if (tmdbRes.data && tmdbRes.data.Response === 'True') {
+                        const mapped = mapOMDBDetailToTMDB(tmdbRes.data);
+                        if (mapped.release_date && mapped.release_date !== 'N/A') {
+                            relDate = mapped.release_date;
+                            console.log(`✅ [Release Worker] release_date recuperata da OMDb: ${relDate}. Aggiornamento DB...`);
+                            // Aggiorna il record nel DB con la release_date recuperata
+                            try {
+                                await axios.patch(`${SUPABASE_URL}/rest/v1/movie_reminders`, {
+                                    release_date: relDate
+                                }, {
+                                    params: { id: `eq.${reminder.id}` },
+                                    headers: supabaseHeaders(),
+                                    timeout: 10000
+                                });
+                            } catch (patchDateErr) {
+                                console.warn(`⚠️ [Release Worker] Impossibile aggiornare release_date nel DB per ID ${reminder.id}:`, patchDateErr.message);
+                            }
+                        } else {
+                            console.warn(`⚠️ [Release Worker] OMDb non ha restituito una release_date per ID ${reminder.tmdb_movie_id}. Salto questo promemoria.`);
+                            continue;
                         }
                     } else {
-                        console.warn(`⚠️ [Release Worker] TMDb non ha restituito una release_date per ID ${reminder.tmdb_movie_id}. Salto questo promemoria.`);
+                        console.warn(`⚠️ [Release Worker] OMDb non ha restituito una risposta valida per ID ${reminder.tmdb_movie_id}. Salto questo promemoria.`);
                         continue;
                     }
                 } catch (tmdbErr) {
-                    console.warn(`⚠️ [Release Worker] Impossibile recuperare release_date da TMDb per ID ${reminder.tmdb_movie_id}:`, tmdbErr.message);
+                    console.warn(`⚠️ [Release Worker] Impossibile recuperare release_date da OMDb per ID ${reminder.tmdb_movie_id}:`, tmdbErr.message);
                     continue;
                 }
             }
