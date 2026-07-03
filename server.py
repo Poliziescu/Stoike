@@ -57,6 +57,90 @@ def serve_static(path):
 # PROXY TMDb API
 # =========================================
 
+# Caching per i film rilasciati in Italia
+CACHE_PATH = 'italy_movies_cache.json'
+italy_movies_cache = {}
+
+try:
+    if os.path.exists(CACHE_PATH):
+        with open(CACHE_PATH, 'r', encoding='utf-8') as f:
+            italy_movies_cache = json.load(f)
+        print(f"📁 [Cache] Caricato cache dei film in Italia: {len(italy_movies_cache)} elementi.")
+except Exception as err:
+    print(f"❌ Errore nel caricamento della cache: {str(err)}")
+
+def save_cache():
+    try:
+        with open(CACHE_PATH, 'w', encoding='utf-8') as f:
+            json.dump(italy_movies_cache, f, indent=2)
+    except Exception as err:
+        print(f"❌ Errore nel salvataggio della cache: {str(err)}")
+
+def is_movie_in_italy(movie_id, original_language):
+    if not movie_id:
+        return False
+    if original_language == 'it':
+        return True
+
+    key = str(movie_id)
+    if key in italy_movies_cache:
+        return italy_movies_cache[key]
+
+    try:
+        url = f'{TMDB_BASE_URL}/movie/{movie_id}/release_dates'
+        resp = http_requests.get(url, params={'api_key': TMDB_API_KEY}, timeout=5)
+        if resp.status_code == 200:
+            data = resp.json()
+            results = data.get('results', [])
+            in_italy = any(r.get('iso_3166_1') == 'IT' for r in results)
+            italy_movies_cache[key] = in_italy
+            save_cache()
+            return in_italy
+    except Exception as e:
+        print(f"❌ Errore nel recupero release_dates per film ID {movie_id}: {str(e)}")
+    return False
+
+def is_valid_title(title, original_title):
+    # Regex per escludere caratteri non latini (Cinese, Giapponese, Coreano, Arabo, Ebraico, Cirillico, Indiano, Tailandese, Greco)
+    non_latin_pattern = re.compile(
+        r'[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af\u1100-\u11ff\u3000-\u303f\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff\u0590-\u05ff\u0400-\u04ff\u0500-\u052f\u0900-\u097f\u0980-\u09ff\u0b80-\u0bff\u0c00-\u0c7f\u0c80-\u0cff\u0d00-\u0d7f\u0e00-\u0e7f\u0370-\u03ff]'
+    )
+    if title and non_latin_pattern.search(title):
+        return False
+    if original_title and non_latin_pattern.search(original_title):
+        return False
+    return True
+
+def is_movie_object(m):
+    return m and (m.get('title') is not None or m.get('original_title') is not None)
+
+def is_valid_actor(m):
+    if not m:
+        return False
+    name = m.get('name') or ''
+    original_name = m.get('original_name') or ''
+    # Regex per escludere caratteri non latini (Cinese, Giapponese, Coreano, Arabo, Ebraico, Cirillico, Indiano, Tailandese, Greco)
+    non_latin_pattern = re.compile(
+        r'[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af\u1100-\u11ff\u3000-\u303f\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff\u0590-\u05ff\u0400-\u04ff\u0500-\u052f\u0900-\u097f\u0980-\u09ff\u0b80-\u0bff\u0c00-\u0c7f\u0c80-\u0cff\u0d00-\u0d7f\u0e00-\u0e7f\u0370-\u03ff]'
+    )
+    if name and non_latin_pattern.search(name):
+        return False
+    if original_name and non_latin_pattern.search(original_name):
+        return False
+        
+    # Filtra anche il suo array known_for se presente per evitare di mostrare titoli non validi come sottotitoli
+    known_for = m.get('known_for')
+    if isinstance(known_for, list):
+        filtered_known_for = []
+        for k in known_for:
+            title = k.get('title') or k.get('name') or ''
+            original_title = k.get('original_title') or k.get('original_name') or ''
+            if not non_latin_pattern.search(title) and not non_latin_pattern.search(original_title):
+                filtered_known_for.append(k)
+        m['known_for'] = filtered_known_for
+        
+    return True
+
 @app.route('/api/tmdb/<path:endpoint>')
 def proxy_tmdb(endpoint):
     """Proxy generico per qualsiasi endpoint TMDb. Nasconde l'API key."""
@@ -78,7 +162,69 @@ def proxy_tmdb(endpoint):
         }
         resp = http_requests.get(target_url, params=params, headers=headers, timeout=10)
         print(f"✅ [TMDb Proxy] Risposta ricevuta: Stato {resp.status_code}")
-        return jsonify(resp.json()), resp.status_code
+        
+        if resp.status_code != 200:
+            return jsonify(resp.json()), resp.status_code
+            
+        data = resp.json()
+        if data:
+            # Caso 1: Array di risultati (liste di film / persone)
+            if 'results' in data and isinstance(data['results'], list):
+                filtered_results = []
+                for m in data['results']:
+                    if m and m.get('id'):
+                        if not is_movie_object(m):
+                            if is_valid_actor(m):
+                                filtered_results.append(m)
+                        elif is_movie_in_italy(m['id'], m.get('original_language')) and is_valid_title(m.get('title'), m.get('original_title')):
+                            filtered_results.append(m)
+                data['results'] = filtered_results
+            # Caso 2: Parti di una collezione
+            elif 'parts' in data and isinstance(data['parts'], list):
+                filtered_parts = []
+                for m in data['parts']:
+                    if m and m.get('id'):
+                        if not is_movie_object(m):
+                            if is_valid_actor(m):
+                                filtered_parts.append(m)
+                        elif is_movie_in_italy(m['id'], m.get('original_language')) and is_valid_title(m.get('title'), m.get('original_title')):
+                            filtered_parts.append(m)
+                data['parts'] = filtered_parts
+            # Caso 3: Crediti cast/crew di un attore / film
+            elif ('cast' in data and isinstance(data['cast'], list)) or ('crew' in data and isinstance(data['crew'], list)):
+                if 'cast' in data and isinstance(data['cast'], list):
+                    filtered_cast = []
+                    for m in data['cast']:
+                        if m and m.get('id'):
+                            if not is_movie_object(m):
+                                if is_valid_actor(m):
+                                    filtered_cast.append(m)
+                            elif is_movie_in_italy(m['id'], m.get('original_language')) and is_valid_title(m.get('title'), m.get('original_title')):
+                                filtered_cast.append(m)
+                    data['cast'] = filtered_cast
+                if 'crew' in data and isinstance(data['crew'], list):
+                    filtered_crew = []
+                    for m in data['crew']:
+                        if m and m.get('id'):
+                            if not is_movie_object(m):
+                                if is_valid_actor(m):
+                                    filtered_crew.append(m)
+                            elif is_movie_in_italy(m['id'], m.get('original_language')) and is_valid_title(m.get('title'), m.get('original_title')):
+                                filtered_crew.append(m)
+                    data['crew'] = filtered_crew
+            # Caso 4: Dettaglio singolo film
+            elif re.match(r'^movie/\d+$', endpoint):
+                if data.get('id') and is_movie_object(data):
+                    if not is_movie_in_italy(data['id'], data.get('original_language')) or not is_valid_title(data.get('title'), data.get('original_title')):
+                        print(f"🚫 [TMDb Proxy] Film ID {data['id']} filtrato (non in Italia o titolo non valido).")
+                        return jsonify({'success': False, 'message': 'Film non disponibile in Italia o lingua non supportata.'}), 404
+            # Caso 5: Dettaglio singolo attore
+            elif re.match(r'^person/\d+$', endpoint):
+                if data.get('id') and not is_valid_actor(data):
+                    print(f"🚫 [TMDb Proxy] Attore ID {data.get('id')} filtrato (nome con caratteri non latini).")
+                    return jsonify({'success': False, 'message': 'Attore non supportato a sistema.'}), 404
+        
+        return jsonify(data), resp.status_code
     except Exception as e:
         print(f"❌ [TMDb Proxy] ERRORE: {str(e)}")
         return jsonify({'error': str(e)}), 500

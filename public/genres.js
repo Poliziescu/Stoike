@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     container.innerHTML = gHTML;
 
+    const renderedMovieIds = new Set();
     let currentGenreId = '';
     let currentGenreName = 'All';
     let currentPage = 1;
@@ -54,7 +55,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         const data = await fetchTMDB(pagedEndpoint);
         if (data) {
             totalPages = data.total_pages || 1;
-            return data.results ? data.results.map(m => mapTMDBMovie(m)) : [];
+            return data.results 
+                ? data.results
+                    .map(m => mapTMDBMovie(m))
+                    .filter(movie => {
+                        if (renderedMovieIds.has(movie.id)) return false;
+                        renderedMovieIds.add(movie.id);
+                        return true;
+                    })
+                : [];
         }
         return [];
     }
@@ -63,6 +72,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         currentGenreId = genreId;
         currentGenreName = genreName;
         currentPage = 1;
+        renderedMovieIds.clear();
 
         if (sectionTitle) {
             sectionTitle.innerText = genreId ? `${i18n.t('genres.genreLabel')} ${genreName}` : i18n.t('genres.allGenres');

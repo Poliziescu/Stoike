@@ -107,10 +107,101 @@ app.get('/account.html', (req, res) => {
 // Serve le risorse statiche (JS, CSS, immagini) della cartella public
 app.use(express.static(path.join(__dirname, 'public')));
 
-
 // =========================================
 // PROXY TMDb API
 // =========================================
+
+// Caching per i film rilasciati in Italia
+const cachePath = path.join(__dirname, 'italy_movies_cache.json');
+let italyMoviesCache = {};
+
+try {
+    if (fs.existsSync(cachePath)) {
+        italyMoviesCache = JSON.parse(fs.readFileSync(cachePath, 'utf8'));
+        console.log(`📁 [Cache] Caricato cache dei film in Italia: ${Object.keys(italyMoviesCache).length} elementi.`);
+    }
+} catch (err) {
+    console.error('❌ Errore nel caricamento della cache:', err.message);
+}
+
+function saveCache() {
+    try {
+        fs.writeFile(cachePath, JSON.stringify(italyMoviesCache, null, 2), 'utf8', (err) => {
+            if (err) {
+                console.error('❌ Errore nel salvataggio asincrono della cache:', err.message);
+            }
+        });
+    } catch (err) {
+        console.error('❌ Errore nel salvataggio della cache:', err.message);
+    }
+}
+
+async function isMovieInItaly(movieId, originalLanguage) {
+    if (!movieId) return false;
+    if (originalLanguage === 'it') return true;
+
+    const key = String(movieId);
+    if (italyMoviesCache[key] !== undefined) {
+        return italyMoviesCache[key];
+    }
+
+    try {
+        const url = `${TMDB_BASE_URL}/movie/${movieId}/release_dates`;
+        const res = await axios.get(url, {
+            params: { api_key: TMDB_API_KEY },
+            timeout: 5000
+        });
+
+        const results = res.data && res.data.results;
+        let inItaly = false;
+        if (Array.isArray(results)) {
+            inItaly = results.some(r => r.iso_3166_1 === 'IT');
+        }
+
+        italyMoviesCache[key] = inItaly;
+        saveCache();
+        return inItaly;
+    } catch (err) {
+        console.error(`❌ Errore nel recupero release_dates per film ID ${movieId}:`, err.message);
+        return false;
+    }
+}
+
+function isValidTitle(title, originalTitle) {
+    // Regex per escludere caratteri non latini (Cinese, Giapponese, Coreano, Arabo, Ebraico, Cirillico, Indiano, Tailandese, Greco)
+    const nonLatinRegex = /[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af\u1100-\u11ff\u3000-\u303f\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff\u0590-\u05ff\u0400-\u04ff\u0500-\u052f\u0900-\u097f\u0980-\u09ff\u0b80-\u0bff\u0c00-\u0c7f\u0c80-\u0cff\u0d00-\u0d7f\u0e00-\u0e7f\u0370-\u03ff]/;
+
+    if (nonLatinRegex.test(title || '')) return false;
+    if (nonLatinRegex.test(originalTitle || '')) return false;
+    return true;
+}
+
+function isMovieObject(m) {
+    return m && (m.title !== undefined || m.original_title !== undefined);
+}
+
+function isValidActor(m) {
+    if (!m) return false;
+    const name = m.name || '';
+    const originalName = m.original_name || '';
+    // Regex per escludere caratteri non latini (Cinese, Giapponese, Coreano, Arabo, Ebraico, Cirillico, Indiano, Tailandese, Greco)
+    const nonLatinRegex = /[\u4e00-\u9fa5\u3040-\u30ff\uac00-\ud7af\u1100-\u11ff\u3000-\u303f\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\ufb50-\ufdff\ufe70-\ufeff\u0590-\u05ff\u0400-\u04ff\u0500-\u052f\u0900-\u097f\u0980-\u09ff\u0b80-\u0bff\u0c00-\u0c7f\u0c80-\u0cff\u0d00-\u0d7f\u0e00-\u0e7f\u0370-\u03ff]/;
+    if (nonLatinRegex.test(name) || nonLatinRegex.test(originalName)) {
+        return false;
+    }
+    
+    // Filtra anche il suo array known_for se presente per evitare di mostrare titoli non validi come sottotitoli
+    if (Array.isArray(m.known_for)) {
+        m.known_for = m.known_for.filter(k => {
+            const title = k.title || k.name || '';
+            const originalTitle = k.original_title || k.original_name || '';
+            return !nonLatinRegex.test(title) && !nonLatinRegex.test(originalTitle);
+        });
+    }
+    
+    return true;
+}
+
 app.get('/api/tmdb/*', async (req, res) => {
     const endpoint = req.params[0];
     const params = { ...req.query };
@@ -133,7 +224,98 @@ app.get('/api/tmdb/*', async (req, res) => {
             timeout: 10000
         });
         console.log(`✅ [TMDb Proxy] Risposta ricevuta: Stato ${response.status}`);
-        return res.status(response.status).json(response.data);
+
+        let data = response.data;
+        if (data) {
+            // Caso 1: Array di risultati (liste di film / persone)
+            if (Array.isArray(data.results)) {
+                const filterPromises = data.results.map(async (m) => {
+                    if (m && m.id) {
+                        if (!isMovieObject(m)) {
+                            return isValidActor(m) ? m : null;
+                        }
+                        const inItaly = await isMovieInItaly(m.id, m.original_language);
+                        if (inItaly && isValidTitle(m.title, m.original_title)) {
+                            return m;
+                        }
+                    }
+                    return null;
+                });
+                const resolved = await Promise.all(filterPromises);
+                data.results = resolved.filter(Boolean);
+            }
+            // Caso 2: Parti di una collezione
+            else if (Array.isArray(data.parts)) {
+                const filterPromises = data.parts.map(async (m) => {
+                    if (m && m.id) {
+                        if (!isMovieObject(m)) {
+                            return isValidActor(m) ? m : null;
+                        }
+                        const inItaly = await isMovieInItaly(m.id, m.original_language);
+                        if (inItaly && isValidTitle(m.title, m.original_title)) {
+                            return m;
+                        }
+                    }
+                    return null;
+                });
+                const resolved = await Promise.all(filterPromises);
+                data.parts = resolved.filter(Boolean);
+            }
+            // Caso 3: Crediti cast/crew di un attore / film
+            else if (Array.isArray(data.cast) || Array.isArray(data.crew)) {
+                if (Array.isArray(data.cast)) {
+                    const filterPromises = data.cast.map(async (m) => {
+                        if (m && m.id) {
+                            if (!isMovieObject(m)) {
+                                return isValidActor(m) ? m : null;
+                            }
+                            const inItaly = await isMovieInItaly(m.id, m.original_language);
+                            if (inItaly && isValidTitle(m.title, m.original_title)) {
+                                return m;
+                            }
+                        }
+                        return null;
+                    });
+                    const resolved = await Promise.all(filterPromises);
+                    data.cast = resolved.filter(Boolean);
+                }
+                if (Array.isArray(data.crew)) {
+                    const filterPromises = data.crew.map(async (m) => {
+                        if (m && m.id) {
+                            if (!isMovieObject(m)) {
+                                return isValidActor(m) ? m : null;
+                            }
+                            const inItaly = await isMovieInItaly(m.id, m.original_language);
+                            if (inItaly && isValidTitle(m.title, m.original_title)) {
+                                return m;
+                            }
+                        }
+                        return null;
+                    });
+                    const resolved = await Promise.all(filterPromises);
+                    data.crew = resolved.filter(Boolean);
+                }
+            }
+            // Caso 4: Dettaglio singolo film
+            else if (/^movie\/\d+$/.test(endpoint)) {
+                if (data.id && isMovieObject(data)) {
+                    const inItaly = await isMovieInItaly(data.id, data.original_language);
+                    if (!inItaly || !isValidTitle(data.title, data.original_title)) {
+                        console.log(`🚫 [TMDb Proxy] Film ID ${data.id} filtrato (non in Italia o titolo non valido).`);
+                        return res.status(404).json({ success: false, message: 'Film non disponibile in Italia o lingua non supportata.' });
+                    }
+                }
+            }
+            // Caso 5: Dettaglio singolo attore
+            else if (/^person\/\d+$/.test(endpoint)) {
+                if (data.id && !isValidActor(data)) {
+                    console.log(`🚫 [TMDb Proxy] Attore ID ${data.id} filtrato (nome con caratteri non latini).`);
+                    return res.status(404).json({ success: false, message: 'Attore non supportato a sistema.' });
+                }
+            }
+        }
+
+        return res.status(response.status).json(data);
     } catch (error) {
         console.error(`❌ [TMDb Proxy] ERRORE:`, error.message);
         const status = error.response ? error.response.status : 500;

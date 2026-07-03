@@ -84,7 +84,7 @@ async function loadMovieDetails(movieId) {
             id: movie.id,
             title: movie.title,
             genre: movie.genres ? movie.genres.map(g => g.name).join(', ') : '',
-            rating: movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A',
+            rating: movie.vote_average ? movie.vote_average.toFixed(1) : 'Film non ancora valutato',
             release_year: movie.release_date ? movie.release_date.substring(0, 4) : 'N/A',
             poster_url: movie.poster_path ? `https://image.tmdb.org/t/p/w500${movie.poster_path}` : 'https://placehold.co/500x750/131313/FFFFFF?text=No+Cover',
             backdrop_url: movie.backdrop_path ? `https://image.tmdb.org/t/p/w1280${movie.backdrop_path}` : 'https://placehold.co/1280x720/131313/FFFFFF?text=No+Backdrop',
@@ -101,6 +101,15 @@ async function loadMovieDetails(movieId) {
         document.getElementById('detail-genre').innerText = mappedMovie.genre;
         document.getElementById('detail-year').innerText = mappedMovie.release_year;
         document.getElementById('detail-rating').innerText = mappedMovie.rating;
+        
+        const ratingMaxEl = document.getElementById('detail-rating-max');
+        if (ratingMaxEl) {
+            if (mappedMovie.rating === 'Film non ancora valutato') {
+                ratingMaxEl.classList.add('hidden');
+            } else {
+                ratingMaxEl.classList.remove('hidden');
+            }
+        }
 
         // Synopsis
         const synopsisContainer = document.getElementById('detail-synopsis-container');

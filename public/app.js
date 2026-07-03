@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const gridEl = document.getElementById('movies-grid');
     if (!gridEl) return;
 
+    const renderedMovieIds = new Set();
     let trendingCurrentPage = 1;
     let trendingTotalPages = 1;
     const loadMoreBtn = document.getElementById('load-more-btn');
@@ -32,7 +33,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await fetchTMDB(`/trending/movie/week?page=${page}`);
             if (data && data.results && data.results.length > 0) {
                 trendingTotalPages = data.total_pages || 1;
-                return data.results.map(m => mapTMDBMovie(m));
+                return data.results
+                    .map(m => mapTMDBMovie(m))
+                    .filter(movie => {
+                        if (renderedMovieIds.has(movie.id)) return false;
+                        renderedMovieIds.add(movie.id);
+                        return true;
+                    });
             }
         } catch (e) {
             console.error('Error loading trending page:', e);
@@ -61,7 +68,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         let trendingMovies = [];
         if (trendingData && trendingData.results && trendingData.results.length > 0) {
             trendingTotalPages = trendingData.total_pages || 1;
-            trendingMovies = trendingData.results.map(m => mapTMDBMovie(m));
+            trendingMovies = trendingData.results
+                .map(m => mapTMDBMovie(m))
+                .filter(movie => {
+                    if (renderedMovieIds.has(movie.id)) return false;
+                    renderedMovieIds.add(movie.id);
+                    return true;
+                });
         }
 
         // Fallback for Hero if no now_playing movies could be loaded or filtered

@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         id: data.id,
                         title: data.title,
                         genre: genreText,
-                        rating: data.vote_average ? data.vote_average.toFixed(1) : 'N/A',
+                        rating: data.vote_average ? data.vote_average.toFixed(1) : 'Film non ancora valutato',
                         release_year: data.release_date ? data.release_date.substring(0, 4) : 'N/A',
                         poster_url: data.poster_path
                             ? `https://image.tmdb.org/t/p/w500${data.poster_path}`
@@ -164,6 +164,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     if (titleEl) titleEl.innerText = pageTitle;
 
+    const renderedMovieIds = new Set();
     let currentPage = 1;
     let totalPages = 1;
 
@@ -187,7 +188,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 results.sort((a, b) => (b.vote_average || 0) - (a.vote_average || 0));
             }
             
-            return results.map(m => mapTMDBMovie(m));
+            return results
+                .map(m => mapTMDBMovie(m))
+                .filter(movie => {
+                    if (renderedMovieIds.has(movie.id)) return false;
+                    renderedMovieIds.add(movie.id);
+                    return true;
+                });
         }
         return [];
     }
